@@ -261,5 +261,14 @@ in {
         Locked = true;
       };
     };
+
+    # Disable DNS-Over-HTTPS in Chromium-based browsers (Google Chrome, Brave)
+    # so they query local dnsmasq for allowlist enforcement
+    programs.chromium = {
+      enable = true;
+      extraOpts = {
+        DnsOverHttpsMode = "off";
+      };
+    };
   };
 }

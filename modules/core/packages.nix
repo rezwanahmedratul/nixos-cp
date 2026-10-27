@@ -2,6 +2,13 @@
 
 {
   environment.systemPackages = with pkgs; [
+    # Web Browsers
+    google-chrome
+    brave
+
+    # Terminal Emulators
+    alacritty
+
     # IDEs and Text Editors
     codeblocks
     vscode

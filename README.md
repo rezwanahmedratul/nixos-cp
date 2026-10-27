@@ -15,6 +15,8 @@ A declarative, reproducible NixOS configuration tailored for university competit
   - Desktop shortcuts for **Offline C++ Reference** and **Reset Contest Workspace**.
 - **Comprehensive Toolchain**:
   - **IDEs & Editors**: Code::Blocks, Visual Studio Code (customized via Home Manager), VSCodium, Geany, Kate, Vim, Neovim.
+  - **Web Browsers**: Google Chrome, Brave, Firefox (with enterprise DoH policy for strict network filtering).
+  - **Terminals**: Alacritty (GPU-accelerated), Konsole.
   - **C & C++**: GCC (g++), Clang, GDB, LLDB, Clang-Tools (clang-format), CMake, GNU Make, Valgrind.
   - **Python**: Python 3 and PyPy3 (crucial for time-sensitive Python submissions).
   - **Java**: OpenJDK 21 (ICPC standard LTS).
