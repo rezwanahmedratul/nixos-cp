@@ -26,6 +26,7 @@
       "hackerrank.com"
       "spoj.com"
       "icpc.global"
+      
 
       # Cloudflare verification (required for Codeforces bot check challenges)
       "cloudflare.com"
