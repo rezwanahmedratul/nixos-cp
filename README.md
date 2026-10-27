@@ -38,6 +38,7 @@ A declarative, reproducible NixOS configuration tailored for university competit
 .
 ├── flake.nix                          # Flake entry point (lab-pc and contest-iso outputs)
 ├── flake.lock                         # Pinned dependency lockfile
+├── install.sh                         # One-liner quick bootstrap script
 ├── hosts/
 │   └── lab-pc/
 │       ├── configuration.nix          # Machine configuration (imports modules/core)
@@ -69,6 +70,33 @@ A declarative, reproducible NixOS configuration tailored for university competit
 ---
 
 ## Installation & Deployment Workflows
+
+### Quick Install (One-Liner for Lab Machines)
+
+On any NixOS machine (either a **Live USB installer** or an **already installed system**), simply run:
+
+#### Step-by-Step (Enter nix-shell first)
+```bash
+# 1. Enter ephemeral shell with basic tools
+nix-shell -p git curl vim pciutils
+
+# 2. Run the quick installer
+sh <(curl -sSL https://raw.githubusercontent.com/rezwanahmedratul/nixos-cp/main/install.sh)
+```
+
+#### Single One-Liner
+```bash
+nix-shell -p git curl vim pciutils --run "bash <(curl -sSL https://raw.githubusercontent.com/rezwanahmedratul/nixos-cp/main/install.sh)"
+```
+
+The installer will automatically:
+1. Clone this repository into `~/nixos-cp`.
+2. Detect whether it is running on a **Live USB ISO** or an **Already Installed NixOS System**.
+3. Execute the appropriate installation or switch sequence without manual file editing.
+
+---
+
+### Manual Workflows
 
 The unified setup script (`./scripts/install-lab.sh`) automatically detects whether it is running on a **Live USB ISO** or an **already installed NixOS system**.
 
