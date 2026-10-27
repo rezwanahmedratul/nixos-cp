@@ -6,17 +6,9 @@
   inherit (pkgs.lib) attrByPath;
 
   # Versions
-  hyprlangVer = "0.0.3";
-  hyprlsVer = "0.5.2";
-  neroHyprlandVer = "0.0.2";
   codeRunnerVer = "0.12.2";
-  tinymistVer = "0.14.16";
-  typstPreviewVer = "0.11.14";
-  sqlExtsVer = "1.43.0";
-  #geminiVer = "2.87.0";
   cppExtsThemesVer = "2.0.0";
   cppExtsDevToolsVer = "0.5.13";
-  chatgptVer = "26.429.30905";
 
   # Helper function
   extOrMarketplace = {
@@ -42,62 +34,6 @@
         }
       ];
 
-  # Hyprland related
-  hyprlangExts = extOrMarketplace {
-    publisher = "fireblast";
-    name = "hyprlang-vscode";
-    version = hyprlangVer;
-    sha256 = "sha256-iMCyomgMGGUXaVqq1l7bgyvFgZa/W/eWHaqkA5RmExE=";
-  };
-
-  hyprlsExts = extOrMarketplace {
-    publisher = "ewen-lbh";
-    name = "vscode-hyprls";
-    version = hyprlsVer;
-    sha256 = "sha256-IU8P1BfZfAkLMbSROTJRdP9EgrM7dExpeQUyfLGjPNo=";
-  };
-
-  neroHyprlandExts = extOrMarketplace {
-    publisher = "amarcos1337";
-    name = "nero-hyprland";
-    version = neroHyprlandVer;
-    sha256 = "sha256-3RiSYmJK/xODCvUi9c2xtvEIWSBABVHk6QYCAFoqsa8=";
-  };
-
-  tinymistExts = extOrMarketplace {
-    publisher = "myriad-dreamin";
-    name = "tinymist";
-    version = tinymistVer;
-    sha256 = pkgs.lib.fakeSha256;
-  };
-
-  typstPreviewExts = extOrMarketplace {
-    publisher = "mgt19937";
-    name = "typst-preview";
-    version = typstPreviewVer;
-    sha256 = pkgs.lib.fakeSha256;
-  };
-
-  sqlExts = extOrMarketplace {
-    publisher = "ms-mssql";
-    name = "mssql";
-    version = sqlExtsVer;
-    sha256 = "sha256-rzBnBZ9Dy7nQOOCL4Cd3GdiI8UrZiLMzbpAElu8103I=";
-  };
-
-  # geminiCodeAssistExts = extOrMarketplace {
-  #   publisher = "google";
-  #   name = "geminicodeassist";
-  #   version = geminiVer;
-  #   sha256 = "sha256-wgsG/8Vph3rtn3oA1B8W1T1VK6U3emnE0bgqlsAPjjc=";
-  # };
-
-  # chatGPTExts = extOrMarketplace {
-  #   publisher = "openai";
-  #   name = "chatgpt";
-  #   version = chatgptVer;
-  #   sha256 = "sha256-KspK1d7bQpO+LipstEpWafcz/eYG1fiuLSszw4nYjE8=";
-  # };
 
   # codeRunnerExts = extOrMarketplace {
   #   publisher = "formulahendry";
@@ -138,10 +74,7 @@ in {
           kamadorueda.alejandra
           jeff-hykin.better-nix-syntax
           mads-hartmann.bash-ide-vscode
-          tamasfe.even-better-toml
-          zainchen.json
-          shd101wyy.markdown-preview-enhanced
-
+        
           # c/cpp extensions
           ms-vscode.cpptools-extension-pack
           ms-vscode.cpptools
@@ -162,15 +95,8 @@ in {
           ms-python.python
           #github.copilot
         ])
-        ++ hyprlangExts
-        ++ hyprlsExts
-        ++ neroHyprlandExts
-        # ++ sqlExts
         #++ codeRunnerExts
-        ++ cppExtraExts
-        #++ chatGPTExts
-        #++ geminiCodeAssistExts
-        ++ tinymistExts;
+        ++ cppExtraExts;
 
       userSettings = lib.mkForce {
         # Java settings for NixOS
