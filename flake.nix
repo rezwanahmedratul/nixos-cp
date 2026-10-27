@@ -25,15 +25,6 @@
         specialArgs = { inherit inputs; };
         modules = [
           disko.nixosModules.disko
-          home-manager.nixosModules.home-manager
-          {
-            home-manager.useGlobalPkgs = false;
-            home-manager.useUserPackages = true;
-            home-manager.users.contestant = {
-              imports = [ ./vscode.nix ];
-              home.stateVersion = "26.05";
-            };
-          }
           ./hosts/lab-pc/configuration.nix
         ];
       };
@@ -43,15 +34,6 @@
         inherit system;
         specialArgs = { inherit inputs; };
         modules = [
-          home-manager.nixosModules.home-manager
-          {
-            home-manager.useGlobalPkgs = false;
-            home-manager.useUserPackages = true;
-            home-manager.users.nixos = {
-              imports = [ ./vscode.nix ];
-              home.stateVersion = "26.05";
-            };
-          }
           ./iso/configuration.nix
         ];
       };
@@ -63,4 +45,3 @@
     };
   };
 }
-

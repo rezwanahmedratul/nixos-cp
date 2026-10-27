@@ -38,19 +38,27 @@ A declarative, reproducible NixOS configuration tailored for university competit
 .
 ├── flake.nix                          # Flake entry point (lab-pc and contest-iso outputs)
 ├── flake.lock                         # Pinned dependency lockfile
-├── vscode.nix                         # Dedicated VS Code configuration (extensions, themes, settings)
 ├── hosts/
-│   ├── common/
-│   │   ├── default.nix                # Base OS configuration shared by all lab machines
-│   │   └── users.nix                  # Administrator user definition
 │   └── lab-pc/
-│       ├── configuration.nix          # Machine configuration
+│       ├── configuration.nix          # Machine configuration (imports modules/core)
 │       ├── hardware-configuration.nix # Hardware scan template
 │       └── disko.nix                  # Declarative disk partitioning layout
 ├── modules/
-│   └── nixos/
-│       ├── contest-environment.nix    # Reusable contest tools, languages & user module
-│       └── desktop-kde.nix            # KDE Plasma 6 + SDDM + PipeWire audio module
+│   ├── core/                          # Modular system-level configuration
+│   │   ├── default.nix                # Aggregator importing all core modules
+│   │   ├── boot.nix                   # systemd-boot bootloader & kernel settings
+│   │   ├── network.nix                # NetworkManager, hostname, firewall
+│   │   ├── plasma.nix                 # KDE Plasma 6 + SDDM with Wayland + autoLogin
+│   │   ├── packages.nix               # All contest compilers, IDEs, and tools
+│   │   ├── services.nix               # Timesyncd, SSH, PipeWire, anti-sleep
+│   │   ├── fonts.nix                  # Fira Code & JetBrains Mono coding fonts
+│   │   ├── security.nix               # Sudo permissions & dconf
+│   │   ├── system.nix                 # Nix GC, flakes, unfree packages, locale
+│   │   ├── contest-tools.nix          # Reset script & desktop shortcuts
+│   │   └── user.nix                   # System users & Home Manager hook
+│   └── home/                          # User-level Home Manager modules
+│       ├── default.nix                # Home aggregator
+│       └── vscode.nix                 # Full VS Code configuration
 ├── iso/
 │   └── configuration.nix              # Bootable Live USB / Installer ISO configuration
 └── scripts/
