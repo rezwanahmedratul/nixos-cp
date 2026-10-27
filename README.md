@@ -25,7 +25,7 @@ A declarative, reproducible NixOS configuration tailored for university competit
   - **Offline Documentation**: Full offline C++ standard library documentation (`cppreference-doc`) and developer man pages (`man-pages`, `man-pages-posix`).
 - **Lab Administration & Maintenance**:
   - Administrative account (`admin`) with `wheel` (sudo) privileges.
-  - Declarative disk partitioning via **Disko** (EFI + ext4/btrfs).
+  - Declarative disk partitioning via **Disko** (EFI + ext4 + 16GB swap with hibernation support).
   - Weekly automatic Nix garbage collection and store deduplication.
   - Scripted contest workspace reset utilities for single machines or whole lab fleets.
   - Pre-configured ISO generation target for creating bootable live USBs.

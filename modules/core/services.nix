@@ -21,7 +21,7 @@
     pulse.enable = true;
   };
 
-  # Anti-interruption: Disable sleep/suspend during thinking time in contests
+  # Anti-interruption: Disable sleep/suspend/hibernation during contests
   systemd.sleep.settings.Sleep = {
     AllowSuspend = "no";
     AllowHibernation = "no";

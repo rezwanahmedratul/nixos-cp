@@ -1,4 +1,8 @@
-{ lib, ... }:
+{
+  lib,
+  swapSize ? "4G",
+  ...
+}:
 
 {
   disko.devices.disk.main = {
@@ -19,11 +23,19 @@
           };
         };
         root = {
-          size = "100%";
+          end = "-${swapSize}"; # Leaves exact swap size at the end of the disk
           content = {
             type = "filesystem";
             format = "ext4";
             mountpoint = "/";
+          };
+        };
+        swap = {
+          size = "100%"; # Consumes remaining space for swap
+          content = {
+            type = "swap";
+            discardPolicy = "both";
+            resumeDevice = false; # No hibernation needed
           };
         };
       };
