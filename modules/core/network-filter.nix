@@ -73,7 +73,7 @@ in {
   options.lab.networkFilter = {
     enable = lib.mkOption {
       type = lib.types.bool;
-      default = true;
+      default = false;
       description = ''
         Whether to restrict internet access for the contest participant.
         When true, contestants are restricted to whitelisted domains and private LAN,

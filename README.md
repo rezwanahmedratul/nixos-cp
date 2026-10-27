@@ -42,13 +42,15 @@ A declarative, reproducible NixOS configuration tailored for university competit
 ├── hosts/
 │   └── lab-pc/
 │       ├── configuration.nix          # Machine configuration (imports modules/core)
-│       ├── hardware-configuration.nix # Hardware scan template
+│       ├── allowlist.nix              # Competition internet domain & subnet allowlist
+│       ├── hardware-configuration.nix # Dynamic hardware configuration
 │       └── disko.nix                  # Declarative disk partitioning layout
 ├── modules/
 │   ├── core/                          # Modular system-level configuration
 │   │   ├── default.nix                # Aggregator importing all core modules
 │   │   ├── boot.nix                   # systemd-boot bootloader & kernel settings
 │   │   ├── network.nix                # NetworkManager, hostname, firewall
+│   │   ├── network-filter.nix         # Per-user firewall & dnsmasq domain filtering
 │   │   ├── plasma.nix                 # KDE Plasma 6 + SDDM with Wayland + autoLogin
 │   │   ├── packages.nix               # All contest compilers, IDEs, and tools
 │   │   ├── services.nix               # Timesyncd, SSH, PipeWire, anti-sleep
@@ -230,7 +232,7 @@ The configuration provides **per-user network filtering**:
 - **Participants**: Strictly restricted to whitelisted domains and authorized local subnets. All other outbound internet traffic is dropped.
 
 ### Declarative Domain Whitelist
-Configure allowed domains in [`hosts/lab-pc/configuration.nix`](hosts/lab-pc/configuration.nix):
+Configure allowed domains in [`hosts/lab-pc/allowlist.nix`](hosts/lab-pc/allowlist.nix):
 
 ```nix
 lab.networkFilter = {
