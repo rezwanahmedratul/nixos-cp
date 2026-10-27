@@ -10,7 +10,7 @@
 #   2. An already installed NixOS system:
 #      - DOES NOT modify or format any disks
 #      - Disables Disko (disko.enableConfig = false)
-#      - Preserves existing disk layout from /etc/nixos/hardware-configuration.nix
+#      - Generates fresh hardware & filesystem configuration from the running system
 #      - Runs nixos-rebuild switch
 #
 # Manual override options:
@@ -25,18 +25,20 @@ HW_CONFIG_DEST="$FLAKE_DIR/hosts/lab-pc/hardware-configuration.nix"
 
 # Function to detect if running on a live USB installer
 is_live_installer() {
-  # 1. Live ISO filesystem signatures:
+  # 1. Live ISO filesystem signatures (read-only store or squashfs)
   if [ -d /nix/.ro-store ] || [ -f /iso/nix-store.squashfs ]; then
     return 0
   fi
+  # 2. System profile indicates an installer/installation-cd
   if readlink -f /run/current-system 2>/dev/null | grep -qiE "installer|installation-cd"; then
     return 0
   fi
-  if grep -qiE "nixos-installer|installation-cd" /proc/cmdline 2>/dev/null; then
+  # 3. Kernel command-line indicates an installer
+  if grep -qiE "nixos-installer|installation-cd|live" /proc/cmdline 2>/dev/null; then
     return 0
   fi
-  # 2. If /etc/nixos/hardware-configuration.nix is missing, this is a live installer session
-  if [ ! -f /etc/nixos/hardware-configuration.nix ]; then
+  # 4. Hostname or booted user indicates standard NixOS live media
+  if [ "$(hostname 2>/dev/null)" = "nixos" ] && [ "$(id -un 2>/dev/null || whoami)" = "nixos" ]; then
     return 0
   fi
   # Otherwise, this is a running installed NixOS host
@@ -305,20 +307,10 @@ else
   echo "Mode                : In-Place Switch (Preserves existing disk configuration)"
   echo "Participant Account : $CHOSEN_USER"
   echo "----------------------------------------------------------"
-  echo "Scanning system hardware and active filesystems..."
+  echo "Generating fresh hardware configuration from the running system..."
 
   # Generate a fresh hardware configuration from the running machine every time
-  TMP_SCAN="$(mktemp -d /tmp/nixos-hw-scan.XXXXXX)"
-  if sudo nixos-generate-config --dir "$TMP_SCAN"; then
-    sudo cp "$TMP_SCAN/hardware-configuration.nix" "$HW_CONFIG_DEST"
-    sudo chown "$(id -u):$(id -g)" "$HW_CONFIG_DEST"
-    echo "Fresh hardware configuration successfully generated."
-  else
-    echo "Error: Failed to generate hardware configuration." >&2
-    rm -rf "$TMP_SCAN"
-    exit 1
-  fi
-  rm -rf "$TMP_SCAN"
+  sudo nixos-generate-config --show-hardware-config > "$HW_CONFIG_DEST"
 
   # Explicitly disable Disko so the generated hardware-configuration.nix manages filesystems
   sed -i 's/disko\.enableConfig = .*/disko.enableConfig = false;/' "$CONFIG_FILE"

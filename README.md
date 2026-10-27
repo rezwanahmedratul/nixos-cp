@@ -116,7 +116,7 @@ Use this if NixOS is already running on the computer:
    ```
    The script:
    - Prompts for the contest participant username and unified administrator/sudo password.
-   - Detects the installed system, copies `/etc/nixos/hardware-configuration.nix`, and preserves existing disks (Disko disabled).
+   - Detects the installed system, automatically generates a fresh hardware configuration for the machine, and preserves existing disks (Disko disabled).
    - Synchronizes the configuration to `/home/admin/nixos-cp`.
    - **Removes all other existing user accounts** and wipes their old home directories.
    - Switches the active generation to `.#lab-pc`.
