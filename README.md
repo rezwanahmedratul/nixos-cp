@@ -14,7 +14,7 @@ A declarative, reproducible NixOS configuration tailored for university competit
   - Strict NTP time synchronization (`systemd-timesyncd`).
   - Desktop shortcuts for **Offline C++ Reference** and **Reset Contest Workspace**.
 - **Comprehensive Toolchain**:
-  - **IDEs & Editors**: Code::Blocks, Visual Studio Code (unfree enabled), VSCodium, Geany, Kate, Vim, Neovim.
+  - **IDEs & Editors**: Code::Blocks, Visual Studio Code (customized via Home Manager), VSCodium, Geany, Kate, Vim, Neovim.
   - **C & C++**: GCC (g++), Clang, GDB, LLDB, Clang-Tools (clang-format), CMake, GNU Make, Valgrind.
   - **Python**: Python 3 and PyPy3 (crucial for time-sensitive Python submissions).
   - **Java**: OpenJDK 21 (ICPC standard LTS).
@@ -25,7 +25,7 @@ A declarative, reproducible NixOS configuration tailored for university competit
   - **Offline Documentation**: Full offline C++ standard library documentation (`cppreference-doc`) and developer man pages (`man-pages`, `man-pages-posix`).
 - **Lab Administration & Maintenance**:
   - Administrative account (`admin`) with `wheel` (sudo) privileges.
-  - Declarative disk partitioning via **Disko** (EFI + ext4 + 16GB swap with hibernation support).
+  - Declarative disk partitioning via **Disko** (EFI + ext4 + RAM-based swap for memory paging without hibernation).
   - Weekly automatic Nix garbage collection and store deduplication.
   - Scripted contest workspace reset utilities for single machines or whole lab fleets.
   - Pre-configured ISO generation target for creating bootable live USBs.
@@ -63,28 +63,26 @@ A declarative, reproducible NixOS configuration tailored for university competit
 ├── iso/
 │   └── configuration.nix              # Bootable Live USB / Installer ISO configuration
 └── scripts/
-    ├── install-lab.sh                 # One-command installer for lab machines
+    ├── install-lab.sh                 # Unified installer (Live USB & in-place switch)
     └── reset-lab.sh                   # Remote workspace reset script for lab fleets
 ```
 
 ---
 
-## Installation & Deployment Workflows
+## Quick Install (One-Liner for Lab Machines)
 
-### Quick Install (One-Liner for Lab Machines)
+On any target PC (either running a **Live USB installer** or an **already installed minimal NixOS**), open a terminal and run:
 
-On any NixOS machine (either a **Live USB installer** or an **already installed system**), simply run:
-
-#### Step-by-Step (Enter nix-shell first)
+### Method 1: Step-by-Step (Enter `nix-shell` first)
 ```bash
-# 1. Enter ephemeral shell with basic tools
+# 1. Spawn an ephemeral shell with basic tools
 nix-shell -p git curl vim pciutils
 
 # 2. Run the quick installer
 sh <(curl -sSL https://raw.githubusercontent.com/rezwanahmedratul/nixos-cp/main/install.sh)
 ```
 
-#### Single One-Liner
+### Method 2: Single One-Liner
 ```bash
 nix-shell -p git curl vim pciutils --run "bash <(curl -sSL https://raw.githubusercontent.com/rezwanahmedratul/nixos-cp/main/install.sh)"
 ```
@@ -92,28 +90,29 @@ nix-shell -p git curl vim pciutils --run "bash <(curl -sSL https://raw.githubuse
 The installer will automatically:
 1. Clone this repository into `~/nixos-cp`.
 2. Detect whether it is running on a **Live USB ISO** or an **Already Installed NixOS System**.
-3. Execute the appropriate installation or switch sequence without manual file editing.
+3. Sizing swap dynamically based on physical RAM (without hibernation).
+4. Execute the appropriate installation or switch sequence without manual file editing.
 
 ---
 
-### Manual Workflows
+## Installation & Deployment Workflows
 
-The unified setup script (`./scripts/install-lab.sh`) automatically detects whether it is running on a **Live USB ISO** or an **already installed NixOS system**.
+The unified setup script (`./scripts/install-lab.sh`) automatically detects the host environment.
 
 ### Option 1: On an Already Installed NixOS System (In-Place Switch)
 
 Use this if NixOS is already running on the computer:
 
-1. Clone this repository onto the machine:
+1. Clone this repository:
    ```bash
-   git clone https://github.com/<your-org>/nixos-cp.git
+   git clone https://github.com/rezwanahmedratul/nixos-cp.git
    cd nixos-cp
    ```
 2. Run the installer script:
    ```bash
    ./scripts/install-lab.sh
    ```
-   The script detects the installed system, automatically copies `/etc/nixos/hardware-configuration.nix`, disables Disko disk re-partitioning, and runs `nixos-rebuild switch --flake .#lab-pc`.
+   The script detects the installed system, copies `/etc/nixos/hardware-configuration.nix`, disables Disko disk re-partitioning, and runs `nixos-rebuild switch --flake .#lab-pc`.
 3. Restart the display manager to enter KDE Plasma 6:
    ```bash
    sudo systemctl restart display-manager
@@ -121,32 +120,47 @@ Use this if NixOS is already running on the computer:
 
 ### Option 2: Fresh Installation from Live USB (Disko Partitioning)
 
-Use this when booting from a blank disk or wiping the machine:
+Use this when booting from a blank disk or re-imaging a lab PC:
 
 1. Boot any NixOS Live USB.
 2. Clone this repository:
    ```bash
-   git clone https://github.com/<your-org>/nixos-cp.git
+   git clone https://github.com/rezwanahmedratul/nixos-cp.git
    cd nixos-cp
    ```
 3. Run the installer with your target drive:
    ```bash
    sudo ./scripts/install-lab.sh /dev/sda
-   # Or /dev/nvme0n1 for NVMe drives
+   # Or /dev/nvme0n1 for NVMe SSDs
    ```
-   The script detects the live installer environment, partitions with Disko, scans hardware, and executes `nixos-install`.
+   The script detects the live installer environment, calculates the appropriate swap size based on RAM, partitions with Disko, scans hardware, and executes `nixos-install`.
 4. Reboot into the installed system:
    ```bash
    sudo reboot
    ```
+
+### Swap Sizing (No Hibernation)
+
+During fresh installation, swap is automatically calculated to provide memory paging headroom without wasting disk space:
+- **$\le$ 2 GB RAM**: Swap = equal to RAM (e.g. `2G`)
+- **4 GB – 16 GB RAM**: Swap = `4G`
+- **$>$ 16 GB RAM**: Swap = `8G`
+
+You can manually specify a swap size using the `--swap` flag:
+```bash
+sudo ./scripts/install-lab.sh --live /dev/sda --swap 4G
+```
 
 ### Manual Override Flags
 
 You can force a specific mode at any time:
 - `./scripts/install-lab.sh --installed`: Force in-place rebuild mode without disk partitioning.
 - `./scripts/install-lab.sh --live /dev/sda`: Force fresh Disko install mode.
+- `./scripts/install-lab.sh --swap 8G`: Custom swap size.
 
-### Option 2: Build a Custom Contest Live USB / Installer ISO
+---
+
+### Option 3: Build a Custom Contest Live USB / Installer ISO
 
 You can generate a bootable ISO that contains the entire KDE Plasma desktop and contest toolchain pre-baked. This allows running contests directly off USB drives without altering existing operating systems on lab PCs, or installing completely offline:
 
@@ -158,7 +172,9 @@ nix build .#iso
 sudo dd if=result/iso/*.iso of=/dev/sdX bs=4M status=progress conv=fsync
 ```
 
-### Option 3: Remote Deployment from Admin Workstation (Fleet Management)
+---
+
+### Option 4: Remote Deployment from Admin Workstation (Fleet Management)
 
 If lab computers are already running NixOS and connected to the local network:
 
@@ -198,7 +214,7 @@ To ensure a clean environment between rounds:
 
 ## Customization
 
-- **Change Hostname**: Override `networking.hostName` in `hosts/lab-pc/configuration.nix` or create per-machine host definitions (e.g., `hosts/pc-01/configuration.nix`).
-- **Adjust Timezone**: Update `time.timeZone = "UTC";` in `hosts/common/default.nix` to your local timezone (e.g., `"Asia/Dhaka"`, `"America/New_York"`).
-- **Add Extra Packages**: Add packages to `contest.extraPackages` in `hosts/common/default.nix`.
-
+- **Change Hostname**: Override `networking.hostName` in `modules/core/network.nix` or in `hosts/lab-pc/configuration.nix`.
+- **Adjust Timezone**: Update `time.timeZone = "UTC";` in `modules/core/system.nix` to your local timezone (e.g., `"Asia/Dhaka"`, `"America/New_York"`).
+- **Add Extra Packages**: Add packages to `environment.systemPackages` in `modules/core/packages.nix`.
+- **Customize VS Code**: Modify extensions, themes, or editor settings in `modules/home/vscode.nix`.
