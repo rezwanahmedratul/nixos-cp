@@ -37,6 +37,7 @@
     description = "Lab Administrator";
     extraGroups = [ "wheel" "networkmanager" ];
     initialPassword = "admin";
+    homeMode = "0700";
   };
 }
 

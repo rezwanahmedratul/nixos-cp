@@ -16,6 +16,8 @@ REPO_URL="https://github.com/rezwanahmedratul/nixos-cp.git"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "")"
 if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/flake.nix" ]; then
   TARGET_DIR="$SCRIPT_DIR"
+elif [ "$(id -u -n 2>/dev/null || whoami)" = "admin" ]; then
+  TARGET_DIR="/home/admin/nixos-cp"
 else
   TARGET_DIR="${HOME}/nixos-cp"
 fi

@@ -180,18 +180,27 @@ if [ "$MODE" = "live" ]; then
   cp /mnt/etc/nixos/hardware-configuration.nix "$HW_CONFIG_DEST"
   (cd "$FLAKE_DIR" && git add -f "$HW_CONFIG_DEST" "$CONFIG_FILE" "$FLAKE_DIR/hosts/lab-pc/disko.nix")
 
-  echo "[4/5] Installing NixOS contest system closure..."
+  echo "[4/6] Installing NixOS contest system closure..."
   sudo nixos-install --flake "$FLAKE_DIR#lab-pc" --no-root-password
 
-  echo "[5/5] Setting initial user passwords..."
+  echo "[5/6] Setting initial user passwords..."
   echo "Set root password:"
   sudo nixos-enter --root /mnt -c 'passwd root' || true
   echo "Set admin password:"
   sudo nixos-enter --root /mnt -c 'passwd admin' || true
 
+  echo "[6/6] Copying nixos-cp repository to /home/admin/nixos-cp..."
+  sudo mkdir -p /mnt/home/admin
+  sudo cp -a "$FLAKE_DIR" /mnt/home/admin/nixos-cp
+  sudo nixos-enter --root /mnt -c 'chown -R admin:users /home/admin/nixos-cp && chmod 700 /home/admin' || true
+
   echo "=========================================================="
   echo "Fresh installation complete! Remove the USB and reboot:"
   echo "  sudo reboot"
+  echo ""
+  echo "Post-reboot notes:"
+  echo "  - Contest environment boots automatically into 'contestant' user."
+  echo "  - Administration flake is ready at: /home/admin/nixos-cp"
   echo "=========================================================="
 
 # ==============================================================================
@@ -229,19 +238,30 @@ else
   fi
 
   echo ""
-  echo "[1/4] Copying existing hardware & filesystem configuration..."
+  echo "[1/5] Copying existing hardware & filesystem configuration..."
   cp /etc/nixos/hardware-configuration.nix "$HW_CONFIG_DEST"
 
-  echo "[2/4] Ensuring Disko partition manager is disabled..."
+  echo "[2/5] Ensuring Disko partition manager is disabled..."
   # Explicitly disable Disko so existing partitions in hardware-configuration.nix are used as-is
   sed -i 's/disko\.enableConfig = .*/disko.enableConfig = false;/' "$CONFIG_FILE"
   (cd "$FLAKE_DIR" && git add -f "$HW_CONFIG_DEST" "$CONFIG_FILE")
 
-  echo "[3/4] Testing configuration before activating..."
+  echo "[3/5] Testing configuration before activating..."
   sudo nixos-rebuild test --flake "$FLAKE_DIR#lab-pc"
 
-  echo "[4/4] Activating and registering default bootloader generation..."
+  echo "[4/5] Activating and registering default bootloader generation..."
   sudo nixos-rebuild switch --flake "$FLAKE_DIR#lab-pc"
+
+  echo "[5/5] Ensuring nixos-cp repository is available in /home/admin/nixos-cp..."
+  if [ "$FLAKE_DIR" != "/home/admin/nixos-cp" ]; then
+    sudo mkdir -p /home/admin
+    sudo cp -a "$FLAKE_DIR" /home/admin/nixos-cp
+    sudo chown -R admin:users /home/admin/nixos-cp
+    sudo chmod 700 /home/admin
+    echo "Repository successfully copied to /home/admin/nixos-cp."
+  else
+    echo "Repository is already located at /home/admin/nixos-cp."
+  fi
 
   echo "=========================================================="
   echo "Configuration successfully applied!"
@@ -251,6 +271,7 @@ else
   echo "  - Desktop Environment: KDE Plasma 6 (SDDM)"
   echo "  - Contestant account : 'contestant' (Auto-login enabled)"
   echo "  - Admin account      : 'admin' (Wheel/sudo privileges)"
+  echo "  - Admin repository   : Available at /home/admin/nixos-cp"
   echo "  - Tools & Compilers  : GCC, Clang, Python, Java 21, Rust, Go, VS Code, Code::Blocks"
   echo ""
   echo "You can now log out or restart SDDM to enter the contest environment:"

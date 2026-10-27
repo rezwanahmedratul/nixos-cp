@@ -112,7 +112,7 @@ Use this if NixOS is already running on the computer:
    ```bash
    ./scripts/install-lab.sh
    ```
-   The script detects the installed system, copies `/etc/nixos/hardware-configuration.nix`, disables Disko disk re-partitioning, and runs `nixos-rebuild switch --flake .#lab-pc`.
+   The script detects the installed system, copies `/etc/nixos/hardware-configuration.nix`, disables Disko disk re-partitioning, copies the repository to `/home/admin/nixos-cp`, and runs `nixos-rebuild switch --flake .#lab-pc`.
 3. Restart the display manager to enter KDE Plasma 6:
    ```bash
    sudo systemctl restart display-manager
@@ -138,6 +138,8 @@ Use this when booting from a blank disk or re-imaging a lab PC:
    ```bash
    sudo reboot
    ```
+
+   *Note: The installer automatically copies the configuration repository into `/home/admin/nixos-cp` (owned by `admin:users` with `0700` home directory permissions), ready for future system updates and maintenance.*
 
 ### Swap Sizing (No Hibernation)
 
