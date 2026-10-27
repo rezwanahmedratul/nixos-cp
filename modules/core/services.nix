@@ -29,3 +29,4 @@
     AllowSuspendThenHibernate = "no";
   };
 }
+

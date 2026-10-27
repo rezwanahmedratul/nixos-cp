@@ -28,3 +28,4 @@
   # Web browser for contest portal access
   programs.firefox.enable = true;
 }
+

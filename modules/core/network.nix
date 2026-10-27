@@ -13,3 +13,4 @@
   # Prevent NetworkManager-wait-online from blocking boot
   systemd.services.NetworkManager-wait-online.enable = false;
 }
+

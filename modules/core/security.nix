@@ -7,3 +7,4 @@
   # Enable dconf for GTK/desktop application state management
   programs.dconf.enable = true;
 }
+

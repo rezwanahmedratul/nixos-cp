@@ -66,3 +66,4 @@ in
     "d /home/contestant/Desktop 0755 contestant users -"
   ];
 }
+

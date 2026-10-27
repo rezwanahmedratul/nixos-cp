@@ -7,3 +7,4 @@
     nerd-fonts.jetbrains-mono
   ];
 }
+
