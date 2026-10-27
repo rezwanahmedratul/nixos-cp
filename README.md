@@ -221,6 +221,55 @@ To ensure a clean environment between rounds:
 
 ---
 
+## Network Filtering & Domain Whitelisting
+
+During competitive programming contests, you often want participants to access only authorized competition platforms (or local contest servers) while preventing external cheating, messaging, or solution lookups.
+
+The configuration provides **per-user network filtering**:
+- **Administrator (`admin`) and root**: Retain **100% full, unrestricted internet access** to download packages, update the system, and run administrative tasks.
+- **Participants**: Strictly restricted to whitelisted domains and authorized local subnets. All other outbound internet traffic is dropped.
+
+### Declarative Domain Whitelist
+Configure allowed domains in [`hosts/lab-pc/configuration.nix`](hosts/lab-pc/configuration.nix):
+
+```nix
+lab.networkFilter = {
+  enable = true;
+  allowedDomains = [
+    "codeforces.com"
+    "codeforces.org"
+    "kattis.com"
+    "open.kattis.com"
+    "atcoder.jp"
+    "cses.fi"
+    "vjudge.net"
+    "icpc.global"
+    "domjudge.cs.myuniversity.edu" # Custom university contest judge
+  ];
+  allowedIPs = [
+    "127.0.0.0/8"      # Local loopback
+    "10.0.0.0/8"       # Campus network
+    "172.16.0.0/12"    # Private LAN
+    "192.168.0.0/16"   # Local contest servers (e.g. DOMjudge, PC2)
+  ];
+};
+```
+
+To allow full unrestricted internet for everyone, simply set `lab.networkFilter.enable = false;`.
+
+### Live / Emergency Whitelisting Tools
+If a domain needs to be allowed immediately during a live contest without rebuilding:
+
+```bash
+# Whitelist a new domain for contestants instantly on the fly:
+sudo contest-allow-domain customjudge.net
+
+# Inspect currently whitelisted domains, subnets, and active kernel IP sets:
+contest-network-status
+```
+
+---
+
 ## Customization
 
 - **Change Hostname**: Override `networking.hostName` in `modules/core/network.nix` or in `hosts/lab-pc/configuration.nix`.

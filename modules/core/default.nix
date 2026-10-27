@@ -12,6 +12,7 @@
     ./packages.nix
     ./contest-tools.nix
     ./user.nix
+    ./network-filter.nix
   ];
 }
 
