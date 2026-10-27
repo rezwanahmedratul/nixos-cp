@@ -2,6 +2,10 @@
 #
 # - Administrator ('admin') and root: Always have full, unrestricted internet access.
 # - Contestants: Access is restricted strictly to the domains and subnets listed below.
+#
+# Note: When a domain is specified (e.g. "codeforces.com"), all of its subdomains
+# (e.g. "m1.codeforces.com", "m2.codeforces.com", "assets.codeforces.com") are
+# automatically permitted and dynamically whitelisted by dnsmasq.
 { ... }:
 
 {
@@ -9,11 +13,19 @@
     enable = true; # Set to false to disable internet restrictions
 
     # List of domain names that contest participants are permitted to access.
-    # Subdomains (e.g. assets.codeforces.com) are automatically permitted.
+    # All subdomains (e.g. m1.codeforces.com, assets.codeforces.com) are automatically allowed.
     allowedDomains = [
-      # Competitive Programming Judges & Platforms
+      # Competitive Programming Judges, Platforms & Mirrors
       "codeforces.com"
       "codeforces.org"
+      "m1.codeforces.com"
+      "m2.codeforces.com"
+      "m3.codeforces.com"
+      "assets.codeforces.com"
+      "polygon.codeforces.com"
+      "espresso.codeforces.com"
+      "sta.codeforces.com"
+
       "kattis.com"
       "open.kattis.com"
       "atcoder.jp"
@@ -23,6 +35,10 @@
       "hackerrank.com"
       "spoj.com"
       "icpc.global"
+
+      # Cloudflare verification & Turnstile (required for bot check challenges on CP sites)
+      "cloudflare.com"
+      "challenges.cloudflare.com"
 
       # Platform asset CDNs & web fonts
       "fonts.googleapis.com"
@@ -42,4 +58,3 @@
     ];
   };
 }
-
