@@ -1,7 +1,6 @@
-# Machine hardware configuration template.
-# When installing onto a physical machine in the lab, you can generate the exact
-# hardware configuration using:
-#   nixos-generate-config --no-filesystems --root /mnt
+# Hardware configuration template.
+# On physical lab machines, the installation script will automatically
+# populate this file from hardware detection or /etc/nixos/hardware-configuration.nix.
 { config, lib, pkgs, modulesPath, ... }:
 
 {
@@ -22,11 +21,7 @@
   boot.kernelModules = [ "kvm-intel" "kvm-amd" ];
   boot.extraModulePackages = [ ];
 
-  # Filesystem mounts are managed declaratively via disko (./disko.nix)
-  # or defined locally per machine.
-
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
 }
-

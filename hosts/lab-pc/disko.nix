@@ -1,7 +1,9 @@
+{ lib, ... }:
+
 {
   disko.devices.disk.main = {
-    # Default target drive; override with /dev/nvme0n1 if lab machines use NVMe drives
-    device = "/dev/sda";
+    # Default target drive; override with /dev/nvme0n1 if lab machines use NVMe
+    device = lib.mkDefault "/dev/sda";
     type = "disk";
     content = {
       type = "gpt";
@@ -28,4 +30,3 @@
     };
   };
 }
-
