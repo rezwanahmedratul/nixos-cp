@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, config, ... }:
 
 {
   # X11 / Wayland base support
@@ -22,7 +22,7 @@
   # Automatically log in the contest user to KDE Plasma
   services.displayManager.autoLogin = {
     enable = true;
-    user = "contestant";
+    user = config.lab.user;
   };
 
   # Web browser for contest portal access

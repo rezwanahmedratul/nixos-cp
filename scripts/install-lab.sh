@@ -47,6 +47,8 @@ is_live_installer() {
 MODE=""
 TARGET_DISK=""
 SWAP_SIZE=""
+CHOSEN_USER=""
+ADMIN_PASS=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -69,14 +71,30 @@ while [[ $# -gt 0 ]]; do
       MODE="installed"
       shift
       ;;
+    --user|-u)
+      shift
+      if [[ $# -gt 0 ]]; then
+        CHOSEN_USER="$1"
+        shift
+      fi
+      ;;
+    --admin-pass)
+      shift
+      if [[ $# -gt 0 ]]; then
+        ADMIN_PASS="$1"
+        shift
+      fi
+      ;;
     -h|--help)
       echo "Usage: $0 [OPTIONS]"
       echo ""
       echo "Options:"
-      echo "  --live [DEVICE]    Force Live USB install mode (formats drive with Disko, e.g. /dev/sda)"
-      echo "  --swap [SIZE]      Specify swap size (e.g. 2G, 4G, 8G; calculated from RAM by default)"
-      echo "  --installed        Force installed system mode (preserves existing disk config)"
-      echo "  -h, --help         Show this help message"
+      echo "  --live [DEVICE]       Force Live USB install mode (formats drive with Disko, e.g. /dev/sda)"
+      echo "  --swap [SIZE]         Specify swap size (e.g. 2G, 4G, 8G; calculated from RAM by default)"
+      echo "  --installed           Force installed system mode (preserves existing disk config)"
+      echo "  --user, -u [NAME]     Set contest participant username (prompts if omitted)"
+      echo "  --admin-pass [PASS]   Set admin/sudo/root password (prompts securely if omitted)"
+      echo "  -h, --help            Show this help message"
       echo ""
       echo "Without flags, the script auto-detects the environment."
       exit 0
@@ -104,12 +122,69 @@ echo "   NixOS Competitive Programming Lab Setup"
 echo "=========================================================="
 echo "Flake root: $FLAKE_DIR"
 
+# ------------------------------------------------------------------------------
+# User Account & Password Configuration
+# ------------------------------------------------------------------------------
+if [ -z "$CHOSEN_USER" ]; then
+  echo ""
+  echo "--- Contest User Configuration ---"
+  while true; do
+    read -rp "Enter username for contest participants (e.g. pc01, student, participant): " INPUT_USER
+    INPUT_USER="$(echo "$INPUT_USER" | xargs | tr '[:upper:]' '[:lower:]')"
+    if [ -z "$INPUT_USER" ]; then
+      echo "Username cannot be empty. Please enter a valid username."
+      continue
+    fi
+    if ! [[ "$INPUT_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
+      echo "Invalid username '$INPUT_USER'. Must start with a lowercase letter and contain only letters, digits, '_' or '-'."
+      continue
+    fi
+    if [[ "$INPUT_USER" =~ ^(admin|root|wheel|users|nixos|systemd|nobody)$ ]]; then
+      echo "Username '$INPUT_USER' is reserved for system administration. Please choose another username."
+      continue
+    fi
+    CHOSEN_USER="$INPUT_USER"
+    break
+  done
+fi
+
+if [ -z "$ADMIN_PASS" ]; then
+  echo ""
+  echo "--- Administrator Password ---"
+  echo "Set the password for 'admin' (used for sudo commands) and 'root':"
+  while true; do
+    read -rsp "Enter admin/sudo password: " PASS1
+    echo ""
+    read -rsp "Confirm admin/sudo password: " PASS2
+    echo ""
+    if [ "$PASS1" != "$PASS2" ]; then
+      echo "Passwords do not match. Please try again."
+      continue
+    fi
+    if [ -z "$PASS1" ]; then
+      echo "Password cannot be empty. Please try again."
+      continue
+    fi
+    ADMIN_PASS="$PASS1"
+    break
+  done
+fi
+
+# Configure chosen participant user in configuration.nix
+if grep -q "lab\.user = " "$CONFIG_FILE"; then
+  sed -i "s/lab\.user = .*/lab.user = \"$CHOSEN_USER\";/" "$CONFIG_FILE"
+else
+  sed -i "s/}$/  lab.user = \"$CHOSEN_USER\";\n}/" "$CONFIG_FILE"
+fi
+
 # ==============================================================================
 # MODE 1: Fresh Installation from Live USB (Disko Partitioning)
 # ==============================================================================
 if [ "$MODE" = "live" ]; then
+  echo ""
   echo "Detected Environment: Live USB Installer"
   echo "Mode                : Fresh Install (Disko Partitioning + nixos-install)"
+  echo "Participant Account : $CHOSEN_USER"
   echo "----------------------------------------------------------"
   echo "[NOTICE]: Disko partition manager WILL be applied to format the target disk."
 
@@ -166,28 +241,26 @@ if [ "$MODE" = "live" ]; then
   sed -i "s/swapSize ? \".*\"/swapSize ? \"$SWAP_SIZE\"/" "$FLAKE_DIR/hosts/lab-pc/disko.nix"
 
   echo ""
-  echo "[1/5] Partitioning and formatting disk with Disko (Swap: $SWAP_SIZE)..."
+  echo "[1/6] Partitioning and formatting disk with Disko (Swap: $SWAP_SIZE)..."
   sudo nix --experimental-features 'nix-command flakes' run github:nix-community/disko -- \
     --mode disko \
     --arg device "\"$TARGET_DISK\"" \
     --arg swapSize "\"$SWAP_SIZE\"" \
     "$FLAKE_DIR/hosts/lab-pc/disko.nix"
 
-  echo "[2/5] Generating hardware configuration from detected hardware..."
+  echo "[2/6] Generating hardware configuration from detected hardware..."
   sudo nixos-generate-config --no-filesystems --root /mnt
 
-  echo "[3/5] Updating flake with detected hardware..."
+  echo "[3/6] Updating flake with detected hardware..."
   cp /mnt/etc/nixos/hardware-configuration.nix "$HW_CONFIG_DEST"
   (cd "$FLAKE_DIR" && git add -f "$HW_CONFIG_DEST" "$CONFIG_FILE" "$FLAKE_DIR/hosts/lab-pc/disko.nix")
 
   echo "[4/6] Installing NixOS contest system closure..."
   sudo nixos-install --flake "$FLAKE_DIR#lab-pc" --no-root-password
 
-  echo "[5/6] Setting initial user passwords..."
-  echo "Set root password:"
-  sudo nixos-enter --root /mnt -c 'passwd root' || true
-  echo "Set admin password:"
-  sudo nixos-enter --root /mnt -c 'passwd admin' || true
+  echo "[5/6] Setting same password for 'admin' and 'root' (sudo)..."
+  echo "admin:$ADMIN_PASS" | sudo nixos-enter --root /mnt -c 'chpasswd'
+  echo "root:$ADMIN_PASS" | sudo nixos-enter --root /mnt -c 'chpasswd'
 
   echo "[6/6] Copying nixos-cp repository to /home/admin/nixos-cp..."
   sudo mkdir -p /mnt/home/admin
@@ -198,22 +271,40 @@ if [ "$MODE" = "live" ]; then
   echo "Fresh installation complete! Remove the USB and reboot:"
   echo "  sudo reboot"
   echo ""
-  echo "Post-reboot notes:"
-  echo "  - Contest environment boots automatically into 'contestant' user."
-  echo "  - Administration flake is ready at: /home/admin/nixos-cp"
+  echo "Summary:"
+  echo "  - Participant account : '$CHOSEN_USER' (Auto-login enabled)"
+  echo "  - Admin account       : 'admin' (Wheel/sudo privileges, matching root password)"
+  echo "  - Admin repository    : Ready at /home/admin/nixos-cp"
   echo "=========================================================="
 
 # ==============================================================================
 # MODE 2: Already Installed NixOS System (Preserves Existing Disks)
 # ==============================================================================
 else
+  # Detect existing human user accounts (UID >= 1000 and < 30000) that are not admin and not CHOSEN_USER
+  mapfile -t EXISTING_OTHER_USERS < <(awk -F: -v u="$CHOSEN_USER" '
+    $3 >= 1000 && $3 < 30000 && $1 != "admin" && $1 != u { print $1 }
+  ' /etc/passwd)
+
+  echo ""
   echo "Detected Environment: Already Installed NixOS System"
   echo "Mode                : In-Place Switch (Preserves existing disk configuration)"
+  echo "Participant Account : $CHOSEN_USER"
   echo "----------------------------------------------------------"
-  echo "[SAFETY ASSURANCE]:"
-  echo "  - Your existing disk partitions and filesystems will NOT be modified or formatted."
-  echo "  - Disko partition manager is completely DISABLED (disko.enableConfig = false)."
-  echo "  - Preserving all mountpoints and UUIDs from /etc/nixos/hardware-configuration.nix."
+  echo "[SAFETY & ACTIONS OVERVIEW]:"
+  echo "  1. Your existing disk partitions and filesystems will NOT be modified (Disko disabled)."
+  echo "  2. Participant account '$CHOSEN_USER' will be configured with auto-login."
+  echo "  3. Same password will be set for 'admin' (sudo) and 'root'."
+  if [ ${#EXISTING_OTHER_USERS[@]} -gt 0 ]; then
+    echo "  4. [USER CLEANUP]: The following existing user accounts and their /home folders WILL BE DELETED:"
+    for u in "${EXISTING_OTHER_USERS[@]}"; do
+      echo "       * $u (/home/$u)"
+    done
+  else
+    echo "  4. No other human user accounts found to delete."
+  fi
+  echo "  5. Flake repository will be copied to /home/admin/nixos-cp."
+  echo "  6. System will be switched to contest configuration."
   echo "----------------------------------------------------------"
 
   if [ ! -f /etc/nixos/hardware-configuration.nix ]; then
@@ -229,30 +320,22 @@ else
   fi
   echo ""
 
-  echo "This will apply the competitive programming contest configuration"
-  echo "(KDE Plasma 6, VS Code, compilers, CP tools, contest user) onto this machine."
-  read -rp "Proceed with applying configuration to this system? [Y/n]: " confirm
+  read -rp "Proceed with applying configuration and user cleanup? [Y/n]: " confirm
   if [[ "$confirm" == [nN] || "$confirm" == [nN][oO] ]]; then
     echo "Aborted."
     exit 1
   fi
 
   echo ""
-  echo "[1/5] Copying existing hardware & filesystem configuration..."
+  echo "[1/6] Copying existing hardware & filesystem configuration..."
   cp /etc/nixos/hardware-configuration.nix "$HW_CONFIG_DEST"
 
-  echo "[2/5] Ensuring Disko partition manager is disabled..."
+  echo "[2/6] Ensuring Disko partition manager is disabled..."
   # Explicitly disable Disko so existing partitions in hardware-configuration.nix are used as-is
   sed -i 's/disko\.enableConfig = .*/disko.enableConfig = false;/' "$CONFIG_FILE"
   (cd "$FLAKE_DIR" && git add -f "$HW_CONFIG_DEST" "$CONFIG_FILE")
 
-  echo "[3/5] Testing configuration before activating..."
-  sudo nixos-rebuild test --flake "$FLAKE_DIR#lab-pc"
-
-  echo "[4/5] Activating and registering default bootloader generation..."
-  sudo nixos-rebuild switch --flake "$FLAKE_DIR#lab-pc"
-
-  echo "[5/5] Ensuring nixos-cp repository is available in /home/admin/nixos-cp..."
+  echo "[3/6] Ensuring nixos-cp repository is available in /home/admin/nixos-cp..."
   if [ "$FLAKE_DIR" != "/home/admin/nixos-cp" ]; then
     sudo mkdir -p /home/admin
     sudo cp -a "$FLAKE_DIR" /home/admin/nixos-cp
@@ -263,18 +346,46 @@ else
     echo "Repository is already located at /home/admin/nixos-cp."
   fi
 
+  echo "[4/6] Activating and registering default bootloader generation..."
+  sudo nixos-rebuild switch --flake /home/admin/nixos-cp#lab-pc
+
+  echo "[5/6] Setting same password for 'admin' and 'root' (sudo)..."
+  echo "admin:$ADMIN_PASS" | sudo chpasswd
+  echo "root:$ADMIN_PASS" | sudo chpasswd
+
+  echo "[6/6] Deleting other existing user accounts and cleaning home folders..."
+  if [ ${#EXISTING_OTHER_USERS[@]} -gt 0 ]; then
+    for u in "${EXISTING_OTHER_USERS[@]}"; do
+      echo "  Deleting user '$u'..."
+      sudo userdel -r -f "$u" 2>/dev/null || sudo userdel -f "$u" 2>/dev/null || true
+      if [ -d "/home/$u" ]; then
+        sudo rm -rf "/home/$u"
+      fi
+    done
+  fi
+  # Clean up any remaining orphaned directories in /home
+  for hdir in /home/*; do
+    [ -d "$hdir" ] || continue
+    bname="$(basename "$hdir")"
+    if [ "$bname" != "admin" ] && [ "$bname" != "$CHOSEN_USER" ]; then
+      echo "  Removing orphaned directory: $hdir"
+      sudo rm -rf "$hdir"
+    fi
+  done
+
   echo "=========================================================="
   echo "Configuration successfully applied!"
   echo ""
   echo "Summary:"
   echo "  - Existing disk partitions & filesystems preserved untouched."
   echo "  - Desktop Environment: KDE Plasma 6 (SDDM)"
-  echo "  - Contestant account : 'contestant' (Auto-login enabled)"
-  echo "  - Admin account      : 'admin' (Wheel/sudo privileges)"
+  echo "  - Participant account: '$CHOSEN_USER' (Auto-login enabled)"
+  echo "  - Admin account      : 'admin' (Wheel/sudo privileges, matching root password)"
   echo "  - Admin repository   : Available at /home/admin/nixos-cp"
+  echo "  - Other user accounts: Deleted."
   echo "  - Tools & Compilers  : GCC, Clang, Python, Java 21, Rust, Go, VS Code, Code::Blocks"
   echo ""
-  echo "You can now log out or restart SDDM to enter the contest environment:"
-  echo "  sudo systemctl restart display-manager"
+  echo "Rebooting is strongly recommended to cleanly finalize user cleanup:"
+  echo "  sudo reboot"
   echo "=========================================================="
 fi

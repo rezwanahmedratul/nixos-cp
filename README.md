@@ -8,7 +8,7 @@ A declarative, reproducible NixOS configuration tailored for university competit
 
 - **Desktop Environment**: Modern **KDE Plasma 6** with Wayland and SDDM display manager.
 - **Contestant User Experience**:
-  - Dedicated non-privileged `contestant` account with automatic login.
+  - Dedicated non-privileged participant account (custom username chosen during installation, e.g. `student`, `pc01`) with automatic login into KDE Plasma.
   - Pre-created `~/workspace` directory for solutions and test inputs.
   - Sleep, suspend, and hibernation disabled to prevent interruptions during contest thinking periods.
   - Strict NTP time synchronization (`systemd-timesyncd`).
@@ -111,11 +111,18 @@ Use this if NixOS is already running on the computer:
 2. Run the installer script:
    ```bash
    ./scripts/install-lab.sh
+   # Or specify options upfront:
+   # ./scripts/install-lab.sh --user student --admin-pass mypassword
    ```
-   The script detects the installed system, copies `/etc/nixos/hardware-configuration.nix`, disables Disko disk re-partitioning, copies the repository to `/home/admin/nixos-cp`, and runs `nixos-rebuild switch --flake .#lab-pc`.
-3. Restart the display manager to enter KDE Plasma 6:
+   The script:
+   - Prompts for the contest participant username and unified administrator/sudo password.
+   - Detects the installed system, copies `/etc/nixos/hardware-configuration.nix`, and preserves existing disks (Disko disabled).
+   - Synchronizes the configuration to `/home/admin/nixos-cp`.
+   - **Removes all other existing user accounts** and wipes their old home directories.
+   - Switches the active generation to `.#lab-pc`.
+3. Reboot to complete session transition:
    ```bash
-   sudo systemctl restart display-manager
+   sudo reboot
    ```
 
 ### Option 2: Fresh Installation from Live USB (Disko Partitioning)
@@ -133,13 +140,13 @@ Use this when booting from a blank disk or re-imaging a lab PC:
    sudo ./scripts/install-lab.sh /dev/sda
    # Or /dev/nvme0n1 for NVMe SSDs
    ```
-   The script detects the live installer environment, calculates the appropriate swap size based on RAM, partitions with Disko, scans hardware, and executes `nixos-install`.
+   The script prompts for the participant username and admin password, calculates swap size based on RAM, partitions with Disko, scans hardware, and executes `nixos-install`.
 4. Reboot into the installed system:
    ```bash
    sudo reboot
    ```
 
-   *Note: The installer automatically copies the configuration repository into `/home/admin/nixos-cp` (owned by `admin:users` with `0700` home directory permissions), ready for future system updates and maintenance.*
+   *Note: The installer sets the same password for `admin` (sudo) and `root`, and automatically copies the repository into `/home/admin/nixos-cp` (owned by `admin:users` with `0700` home directory permissions).*
 
 ### Swap Sizing (No Hibernation)
 
@@ -196,7 +203,7 @@ If lab computers are already running NixOS and connected to the local network:
 ## Contest Management & Operations
 
 ### Auto-Login & Contestant Session
-When a lab PC powers on, it automatically logs into KDE Plasma under the `contestant` user account. No password prompt is required for students.
+When a lab PC powers on, it automatically logs into KDE Plasma under the participant user account configured during installation (e.g. `student`, `pc01`). No password prompt is required for students.
 
 ### Resetting Between Contests
 To ensure a clean environment between rounds:

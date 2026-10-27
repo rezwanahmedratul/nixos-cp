@@ -1,12 +1,14 @@
-{ pkgs, ... }:
+{ pkgs, config, ... }:
 
 let
+  participant = config.lab.user;
+
   # Workspace reset script for contestants / invigilators
   resetScript = pkgs.writeShellScriptBin "reset-contest-workspace" ''
     #!/usr/bin/env bash
     set -euo pipefail
 
-    TARGET_USER="contestant"
+    TARGET_USER="${participant}"
     USER_HOME="/home/$TARGET_USER"
 
     echo "=== Competitive Programming Environment Reset ==="
@@ -60,10 +62,10 @@ in
     resetDesktop
   ];
 
-  # Pre-create contestant workspace folders
+  # Pre-create participant workspace folders
   systemd.tmpfiles.rules = [
-    "d /home/contestant/workspace 0755 contestant users -"
-    "d /home/contestant/Desktop 0755 contestant users -"
+    "d /home/${participant}/workspace 0755 ${participant} users -"
+    "d /home/${participant}/Desktop 0755 ${participant} users -"
   ];
 }
 
