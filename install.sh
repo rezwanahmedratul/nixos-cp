@@ -57,3 +57,4 @@ echo "[2/2] Launching unified lab installer..."
 cd "$TARGET_DIR"
 chmod +x ./scripts/install-lab.sh
 exec ./scripts/install-lab.sh "$@"
+
