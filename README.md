@@ -70,25 +70,53 @@ A declarative, reproducible NixOS configuration tailored for university competit
 
 ## Installation & Deployment Workflows
 
-Before applying commands, verify whether you are working **locally on the target machine** or **remotely from an admin workstation**.
+The unified setup script (`./scripts/install-lab.sh`) automatically detects whether it is running on a **Live USB ISO** or an **already installed NixOS system**.
 
-### Option 1: One-Command Install via Live USB (Recommended for Lab Setup)
+### Option 1: On an Already Installed NixOS System (In-Place Switch)
 
-1. Boot any NixOS installer Live USB on the target lab computer.
-2. Clone this repository onto the live environment:
+Use this if NixOS is already running on the computer:
+
+1. Clone this repository onto the machine:
    ```bash
    git clone https://github.com/<your-org>/nixos-cp.git
    cd nixos-cp
    ```
-3. Run the automated installation script:
+2. Run the installer script:
+   ```bash
+   ./scripts/install-lab.sh
+   ```
+   The script detects the installed system, automatically copies `/etc/nixos/hardware-configuration.nix`, disables Disko disk re-partitioning, and runs `nixos-rebuild switch --flake .#lab-pc`.
+3. Restart the display manager to enter KDE Plasma 6:
+   ```bash
+   sudo systemctl restart display-manager
+   ```
+
+### Option 2: Fresh Installation from Live USB (Disko Partitioning)
+
+Use this when booting from a blank disk or wiping the machine:
+
+1. Boot any NixOS Live USB.
+2. Clone this repository:
+   ```bash
+   git clone https://github.com/<your-org>/nixos-cp.git
+   cd nixos-cp
+   ```
+3. Run the installer with your target drive:
    ```bash
    sudo ./scripts/install-lab.sh /dev/sda
-   # Use /dev/nvme0n1 if the machine has an NVMe drive
+   # Or /dev/nvme0n1 for NVMe drives
    ```
-4. When finished, reboot:
+   The script detects the live installer environment, partitions with Disko, scans hardware, and executes `nixos-install`.
+4. Reboot into the installed system:
    ```bash
    sudo reboot
    ```
+
+### Manual Override Flags
+
+You can force a specific mode at any time:
+- `./scripts/install-lab.sh --installed`: Force in-place rebuild mode without disk partitioning.
+- `./scripts/install-lab.sh --live /dev/sda`: Force fresh Disko install mode.
 
 ### Option 2: Build a Custom Contest Live USB / Installer ISO
 
