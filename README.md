@@ -202,6 +202,143 @@ If lab computers are already running NixOS and connected to the local network:
 
 ---
 
+## Local System Administration & Rebuilds (as `admin` user)
+
+All lab PC system configurations reside in `/home/admin/nixos-cp`. The `admin` user has full `sudo` privileges to modify configurations, rebuild the operating system, and manage NixOS generations.
+
+### 1. Accessing the Admin Account
+Because lab PCs automatically log in to the unprivileged contestant account (`student`, `pc01`, etc.), access the `admin` account using any of these methods:
+
+- **From Desktop Terminal**:
+  Open Konsole (or any terminal) and switch to the admin user:
+  ```bash
+  su - admin
+  ```
+- **From Virtual Terminal (VT Console)**:
+  Press `Ctrl + Alt + F3` (or `F4`–`F6`) to drop to a text console and log in as `admin`. To return to the graphical desktop session, press `Ctrl + Alt + F1` or `Ctrl + Alt + F2`.
+- **Via SSH (Local or Remote)**:
+  ```bash
+  # From another machine on the LAN:
+  ssh admin@<lab-pc-ip>
+
+  # Or locally from the participant session:
+  ssh admin@localhost
+  ```
+- **From KDE Plasma GUI**:
+  Click **Application Launcher** $\rightarrow$ **Leave** $\rightarrow$ **Switch User**, then select `admin`.
+
+---
+
+### 2. Navigating to the Flake Configuration
+The official system configuration is placed in the `admin` home directory:
+```bash
+cd /home/admin/nixos-cp
+```
+
+---
+
+### 3. Modifying Configurations & Git Staging Requirement
+> [!IMPORTANT]
+> **Nix Flakes only evaluates files tracked by Git.**
+> - If you edit existing tracked files (e.g. `hosts/lab-pc/allowlist.nix`, `modules/core/packages.nix`), Nix automatically detects changes.
+> - If you **create a new file or module** (e.g. `modules/core/extra.nix`), you **must stage it in Git** before rebuilding:
+>   ```bash
+>   git add <new-file>
+>   # or stage all changes:
+>   git add -A
+>   ```
+>   *(If you omit `git add`, Nix Flakes will fail with `error: getting status of ...: No such file or directory`)*.
+
+---
+
+### 4. Rebuilding the Operating System
+
+Inside `/home/admin/nixos-cp`, use the following commands:
+
+#### A. Safe Testing (Does not alter bootloader default)
+Builds and activates the configuration immediately in the current running session, but leaves your default boot entry unchanged:
+```bash
+sudo nixos-rebuild test --flake .#lab-pc
+```
+*Tip: Always use `test` first when experimenting with firewall rules, desktop packages, or system services.*
+
+#### B. Permanent Switch (Sets new bootloader default)
+Builds, immediately activates, and registers the new generation as the default boot choice in `systemd-boot`:
+```bash
+sudo nixos-rebuild switch --flake .#lab-pc
+```
+
+#### C. Build & Activate on Next Reboot
+Builds the system and adds it to the bootloader, but does not activate it in the current session:
+```bash
+sudo nixos-rebuild boot --flake .#lab-pc
+```
+
+#### D. Rebuilding from Any Directory
+You do not have to `cd` into `/home/admin/nixos-cp`. You can run the rebuild command from anywhere by specifying the absolute path:
+```bash
+sudo nixos-rebuild switch --flake /home/admin/nixos-cp#lab-pc
+```
+
+#### E. Dry Run & Verification
+Verify configuration syntax and view which systemd services would be restarted or reloaded without applying changes:
+```bash
+# Check flake schema and syntax:
+nix flake check
+
+# Preview system changes without activating:
+sudo nixos-rebuild dry-activate --flake .#lab-pc
+```
+
+#### F. Troubleshooting & Verbose Errors
+If a build or evaluation error occurs, append `--show-trace` to print the full Nix evaluation call stack:
+```bash
+sudo nixos-rebuild switch --flake .#lab-pc --show-trace
+```
+
+---
+
+### 5. Managing Generations & Rollback
+
+Every time you execute `nixos-rebuild switch`, NixOS creates an immutable generation. If a new configuration causes any problems, you can roll back instantly:
+
+#### List All System Generations
+```bash
+nixos-rebuild list-generations
+```
+
+#### Instant Rollback to Previous Generation
+```bash
+sudo nixos-rebuild switch --rollback
+```
+
+#### Emergency Rollback at Boot
+If a misconfiguration prevents booting or breaks the display manager:
+1. Reboot the lab machine.
+2. At the **systemd-boot** menu, choose a previous generation from the list.
+3. Once booted, log in as `admin` and revert your changes.
+
+#### Cleaning Old Generations to Free Disk Space
+```bash
+# Remove generations older than 14 days and run garbage collection:
+sudo nix-collect-garbage --delete-older-than 14d
+
+# Or delete all generations except the active one (destructive):
+sudo nix-collect-garbage -d
+```
+
+---
+
+### 6. Updating Flake Dependencies (Nixpkgs)
+To update compilers, IDEs, and packages to their latest upstream versions:
+```bash
+cd /home/admin/nixos-cp
+nix flake update
+sudo nixos-rebuild switch --flake .#lab-pc
+```
+
+---
+
 ## Contest Management & Operations
 
 ### Auto-Login & Contestant Session
@@ -257,7 +394,13 @@ lab.networkFilter = {
 };
 ```
 
-To allow full unrestricted internet for everyone, simply set `lab.networkFilter.enable = false;`.
+After editing `allowlist.nix`, apply the changes permanently by rebuilding as `admin`:
+```bash
+cd /home/admin/nixos-cp
+sudo nixos-rebuild switch --flake .#lab-pc
+```
+
+To allow full unrestricted internet for everyone, simply set `lab.networkFilter.enable = false;` and rebuild.
 
 ### Live / Emergency Whitelisting Tools
 If a domain needs to be allowed immediately during a live contest without rebuilding:
@@ -273,6 +416,12 @@ contest-network-status
 ---
 
 ## Customization
+
+After modifying any configuration files below, apply your updates with:
+```bash
+cd /home/admin/nixos-cp
+sudo nixos-rebuild switch --flake .#lab-pc
+```
 
 - **Change Hostname**: Override `networking.hostName` in `modules/core/network.nix` or in `hosts/lab-pc/configuration.nix`.
 - **Adjust Timezone**: Update `time.timeZone = "UTC";` in `modules/core/system.nix` to your local timezone (e.g., `"Asia/Dhaka"`, `"America/New_York"`).
