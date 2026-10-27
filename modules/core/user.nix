@@ -16,7 +16,7 @@ in {
   };
 
   config = {
-    # Home Manager integration for the participant user
+    # Home Manager integration for participant and admin users
     home-manager = {
       useUserPackages = true;
       useGlobalPkgs = false;
@@ -28,6 +28,24 @@ in {
           username = participant;
           homeDirectory = "/home/${participant}";
           stateVersion = "26.05";
+        };
+      };
+      users.admin = {
+        home = {
+          username = "admin";
+          homeDirectory = "/home/admin";
+          stateVersion = "26.05";
+        };
+        programs.git = {
+          enable = true;
+          settings = {
+            user = {
+              name = "admin";
+              email = "admin@example.com";
+            };
+            init.defaultBranch = "main";
+            safe.directory = [ "*" "/home/admin/nixos-cp" ];
+          };
         };
       };
     };

@@ -268,6 +268,7 @@ if [ "$MODE" = "live" ]; then
   sudo mkdir -p /mnt/home/admin
   sudo cp -a "$FLAKE_DIR" /mnt/home/admin/nixos-cp
   sudo nixos-enter --root /mnt -c 'chown -R admin:users /home/admin/nixos-cp && chmod 700 /home/admin' || true
+  sudo nixos-enter --root /mnt -c 'su - admin -c "git config --global user.name admin && git config --global user.email admin@example.com"' || true
 
   echo "=========================================================="
   echo "Fresh installation complete! Remove the USB and reboot:"
@@ -358,6 +359,8 @@ else
     echo "Repository is already located at /home/admin/nixos-cp."
   fi
   (cd /home/admin/nixos-cp && git add -f hosts/lab-pc/hardware-configuration.nix hosts/lab-pc/configuration.nix 2>/dev/null || true)
+  sudo -u admin git config --global user.name "admin" 2>/dev/null || true
+  sudo -u admin git config --global user.email "admin@example.com" 2>/dev/null || true
 
   echo "[2/4] Activating and registering default bootloader generation..."
   sudo nixos-rebuild switch --flake /home/admin/nixos-cp#lab-pc
