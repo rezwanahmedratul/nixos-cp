@@ -1,6 +1,4 @@
-{ pkgs, ... }:
-
-{
+{pkgs, ...}: {
   environment.systemPackages = with pkgs; [
     # Web Browsers
     google-chrome
@@ -12,11 +10,10 @@
     # IDEs and Text Editors
     codeblocks
     vscode
-    vscodium
-    geany
     kdePackages.kate
     vim
     neovim
+    nano
 
     # C & C++ Compiler Toolchain & Debugging
     gcc
@@ -46,8 +43,8 @@
     go
 
     # Benchmarking, Diffing & System Verification
-    time             # GNU time (-v for memory & CPU profiling)
-    diffutils        # diff, cmp
+    time # GNU time (-v for memory & CPU profiling)
+    diffutils # diff, cmp
     patch
     file
     tree
@@ -77,4 +74,3 @@
   documentation.man.enable = true;
   documentation.dev.enable = true;
 }
-
