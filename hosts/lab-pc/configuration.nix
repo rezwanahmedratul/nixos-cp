@@ -11,3 +11,4 @@
   # Set to false on existing installed systems (hardware-configuration.nix manages filesystems).
   disko.enableConfig = lib.mkDefault true;
 }
+
