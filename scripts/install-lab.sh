@@ -3,8 +3,15 @@
 # Competitive Programming Lab Installation / Switch Script
 #
 # Automatically detects whether it is running on:
-#   1. A Live USB ISO installer (Performs fresh Disko partition & nixos-install)
-#   2. An already installed NixOS system (Copies hardware config & nixos-rebuild switch)
+#   1. A Live USB ISO installer:
+#      - Wipes & formats selected target disk with Disko
+#      - Applies Disko partitions (EFI + ext4 + RAM-based swap)
+#      - Runs nixos-install
+#   2. An already installed NixOS system:
+#      - DOES NOT modify or format any disks
+#      - Disables Disko (disko.enableConfig = false)
+#      - Preserves existing disk layout from /etc/nixos/hardware-configuration.nix
+#      - Runs nixos-rebuild switch
 #
 # Manual override options:
 #   ./scripts/install-lab.sh --live [/dev/sda or /dev/nvme0n1]
@@ -18,19 +25,21 @@ HW_CONFIG_DEST="$FLAKE_DIR/hosts/lab-pc/hardware-configuration.nix"
 
 # Function to detect if running on a live USB installer
 is_live_installer() {
-  if [ -d /iso ] || [ -e /etc/is_installer ] || [ -d /nix/.ro-store ]; then
+  # 1. Live ISO filesystem signatures:
+  if [ -d /nix/.ro-store ] || [ -f /iso/nix-store.squashfs ]; then
     return 0
   fi
   if readlink -f /run/current-system 2>/dev/null | grep -qiE "installer|installation-cd"; then
     return 0
   fi
-  if grep -qiE "installer|installation-cd" /proc/cmdline 2>/dev/null; then
+  if grep -qiE "nixos-installer|installation-cd" /proc/cmdline 2>/dev/null; then
     return 0
   fi
-  # If /etc/nixos/hardware-configuration.nix is missing, we are in an installer session
+  # 2. If /etc/nixos/hardware-configuration.nix is missing, this is a live installer session
   if [ ! -f /etc/nixos/hardware-configuration.nix ]; then
     return 0
   fi
+  # Otherwise, this is a running installed NixOS host
   return 1
 }
 
@@ -64,9 +73,9 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: $0 [OPTIONS]"
       echo ""
       echo "Options:"
-      echo "  --live [DEVICE]    Force Live USB install mode (wipes drive, e.g. /dev/sda)"
+      echo "  --live [DEVICE]    Force Live USB install mode (formats drive with Disko, e.g. /dev/sda)"
       echo "  --swap [SIZE]      Specify swap size (e.g. 2G, 4G, 8G; calculated from RAM by default)"
-      echo "  --installed        Force installed system mode (rebuilds running NixOS system)"
+      echo "  --installed        Force installed system mode (preserves existing disk config)"
       echo "  -h, --help         Show this help message"
       echo ""
       echo "Without flags, the script auto-detects the environment."
@@ -81,7 +90,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# If mode was not explicitly forced, auto-detect
+# Auto-detect environment if not explicitly set by flag
 if [ -z "$MODE" ]; then
   if is_live_installer; then
     MODE="live"
@@ -96,14 +105,16 @@ echo "=========================================================="
 echo "Flake root: $FLAKE_DIR"
 
 # ==============================================================================
-# MODE 1: Fresh Installation from Live USB
+# MODE 1: Fresh Installation from Live USB (Disko Partitioning)
 # ==============================================================================
 if [ "$MODE" = "live" ]; then
   echo "Detected Environment: Live USB Installer"
   echo "Mode                : Fresh Install (Disko Partitioning + nixos-install)"
   echo "----------------------------------------------------------"
+  echo "[NOTICE]: Disko partition manager WILL be applied to format the target disk."
 
   if [ -z "$TARGET_DISK" ]; then
+    echo ""
     echo "Available storage disks:"
     lsblk -d -p -n -l -o NAME,SIZE,TYPE,MODEL | grep -E "disk" || true
     echo ""
@@ -117,20 +128,20 @@ if [ "$MODE" = "live" ]; then
 
   echo ""
   echo "WARNING: ALL DATA ON $TARGET_DISK WILL BE COMPLETELY ERASED!"
-  read -rp "Are you sure you want to proceed with installation? [y/N]: " confirm
+  read -rp "Are you sure you want to proceed with fresh installation? [y/N]: " confirm
   if [[ "$confirm" != [yY] && "$confirm" != [yY][eE][sS] ]]; then
     echo "Installation cancelled."
     exit 1
   fi
 
-  # Determine swap size based on RAM (no hibernation)
+  # Determine swap size based on physical RAM (no hibernation)
   if [ -z "$SWAP_SIZE" ]; then
     TOTAL_RAM_KB=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || echo "8388608")
     TOTAL_RAM_GB=$(( (TOTAL_RAM_KB + 1048575) / 1048576 ))
 
-    # Guidelines without hibernation:
+    # Sizing for paging without hibernation:
     # <= 2GB RAM: swap = RAM size (e.g. 2GB)
-    # 2GB - 16GB: swap = 4GB (plenty for paging without wasting disk space)
+    # 2GB - 16GB: swap = 4GB (ample for paging without wasting disk space)
     # > 16GB RAM: swap = 8GB
     if [ "$TOTAL_RAM_GB" -le 2 ]; then
       CALC_SWAP="${TOTAL_RAM_GB}G"
@@ -142,14 +153,14 @@ if [ "$MODE" = "live" ]; then
 
     echo ""
     echo "Hardware RAM detected : ${TOTAL_RAM_GB} GB"
-    echo "Recommended swap size : ${CALC_SWAP} (sized for paging without hibernation)"
+    echo "Recommended swap size : ${CALC_SWAP} (paging only, no hibernation)"
     read -rp "Enter swap size to allocate [$CALC_SWAP]: " USER_SWAP
     SWAP_SIZE="${USER_SWAP:-$CALC_SWAP}"
   fi
 
   echo "Allocating swap partition: $SWAP_SIZE"
 
-  # Enable Disko filesystem generation in configuration.nix
+  # Enable Disko filesystem generation for fresh install
   sed -i 's/disko\.enableConfig = .*/disko.enableConfig = true;/' "$CONFIG_FILE"
   # Update default swap size in disko.nix
   sed -i "s/swapSize ? \".*\"/swapSize ? \"$SWAP_SIZE\"/" "$FLAKE_DIR/hosts/lab-pc/disko.nix"
@@ -184,11 +195,16 @@ if [ "$MODE" = "live" ]; then
   echo "=========================================================="
 
 # ==============================================================================
-# MODE 2: Already Installed NixOS System
+# MODE 2: Already Installed NixOS System (Preserves Existing Disks)
 # ==============================================================================
 else
   echo "Detected Environment: Already Installed NixOS System"
-  echo "Mode                : In-Place Switch (Preserves existing partitions)"
+  echo "Mode                : In-Place Switch (Preserves existing disk configuration)"
+  echo "----------------------------------------------------------"
+  echo "[SAFETY ASSURANCE]:"
+  echo "  - Your existing disk partitions and filesystems will NOT be modified or formatted."
+  echo "  - Disko partition manager is completely DISABLED (disko.enableConfig = false)."
+  echo "  - Preserving all mountpoints and UUIDs from /etc/nixos/hardware-configuration.nix."
   echo "----------------------------------------------------------"
 
   if [ ! -f /etc/nixos/hardware-configuration.nix ]; then
@@ -197,20 +213,27 @@ else
     exit 1
   fi
 
+  echo "Existing mountpoints to be preserved:"
+  grep -E 'fileSystems\."[^"]+"' /etc/nixos/hardware-configuration.nix | sed 's/^[ \t]*/  - /' || true
+  if grep -q "swapDevices" /etc/nixos/hardware-configuration.nix; then
+    echo "  - swapDevices (preserved)"
+  fi
+  echo ""
+
   echo "This will apply the competitive programming contest configuration"
   echo "(KDE Plasma 6, VS Code, compilers, CP tools, contest user) onto this machine."
-  read -rp "Proceed with configuring this system? [Y/n]: " confirm
+  read -rp "Proceed with applying configuration to this system? [Y/n]: " confirm
   if [[ "$confirm" == [nN] || "$confirm" == [nN][oO] ]]; then
     echo "Aborted."
     exit 1
   fi
 
   echo ""
-  echo "[1/4] Importing system hardware configuration from /etc/nixos/hardware-configuration.nix..."
+  echo "[1/4] Copying existing hardware & filesystem configuration..."
   cp /etc/nixos/hardware-configuration.nix "$HW_CONFIG_DEST"
 
-  echo "[2/4] Configuring filesystems (disabling Disko partition manager)..."
-  # Disable Disko config so existing partitions in hardware-configuration.nix are used
+  echo "[2/4] Ensuring Disko partition manager is disabled..."
+  # Explicitly disable Disko so existing partitions in hardware-configuration.nix are used as-is
   sed -i 's/disko\.enableConfig = .*/disko.enableConfig = false;/' "$CONFIG_FILE"
   (cd "$FLAKE_DIR" && git add -f "$HW_CONFIG_DEST" "$CONFIG_FILE")
 
@@ -224,6 +247,7 @@ else
   echo "Configuration successfully applied!"
   echo ""
   echo "Summary:"
+  echo "  - Existing disk partitions & filesystems preserved untouched."
   echo "  - Desktop Environment: KDE Plasma 6 (SDDM)"
   echo "  - Contestant account : 'contestant' (Auto-login enabled)"
   echo "  - Admin account      : 'admin' (Wheel/sudo privileges)"
@@ -233,4 +257,3 @@ else
   echo "  sudo systemctl restart display-manager"
   echo "=========================================================="
 fi
-
