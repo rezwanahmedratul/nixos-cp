@@ -105,19 +105,10 @@ in {
     allowedDomains = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [
-        # Standard Competitive Programming platforms, mirrors & subdomains
+        # Standard Competitive Programming platforms (subdomains automatically allowed)
         "codeforces.com"
         "codeforces.org"
-        "m1.codeforces.com"
-        "m2.codeforces.com"
-        "m3.codeforces.com"
-        "assets.codeforces.com"
-        "polygon.codeforces.com"
-        "espresso.codeforces.com"
-        "sta.codeforces.com"
-
         "kattis.com"
-        "open.kattis.com"
         "atcoder.jp"
         "cses.fi"
         "vjudge.net"
@@ -128,12 +119,10 @@ in {
 
         # Cloudflare Verification & Turnstile (required for bot check challenges on CP sites)
         "cloudflare.com"
-        "challenges.cloudflare.com"
 
         # Web fonts & CDN assets commonly used by CP platforms
         "fonts.googleapis.com"
         "fonts.gstatic.com"
-        "cdnjs.cloudflare.com"
       ];
       description = "List of domain names that contest participants are permitted to access. Subdomains are automatically permitted.";
     };

@@ -3,31 +3,22 @@
 # - Administrator ('admin') and root: Always have full, unrestricted internet access.
 # - Contestants: Access is restricted strictly to the domains and subnets listed below.
 #
-# Note: When a domain is specified (e.g. "codeforces.com"), all of its subdomains
-# (e.g. "m1.codeforces.com", "m2.codeforces.com", "assets.codeforces.com") are
-# automatically permitted and dynamically whitelisted by dnsmasq.
+# Note: You only need to specify the base domain (e.g. "codeforces.com").
+# ALL subdomains (e.g. "m1.codeforces.com", "m2.codeforces.com", "assets.codeforces.com")
+# are automatically and dynamically permitted by dnsmasq in real time.
 { ... }:
 
 {
   lab.networkFilter = {
     enable = true; # Set to false to disable internet restrictions
 
-    # List of domain names that contest participants are permitted to access.
-    # All subdomains (e.g. m1.codeforces.com, assets.codeforces.com) are automatically allowed.
+    # List of allowed domain names.
+    # All subdomains (e.g. m1.codeforces.com, open.kattis.com, etc.) are automatically allowed.
     allowedDomains = [
-      # Competitive Programming Judges, Platforms & Mirrors
+      # Competitive Programming Judges & Platforms
       "codeforces.com"
       "codeforces.org"
-      "m1.codeforces.com"
-      "m2.codeforces.com"
-      "m3.codeforces.com"
-      "assets.codeforces.com"
-      "polygon.codeforces.com"
-      "espresso.codeforces.com"
-      "sta.codeforces.com"
-
       "kattis.com"
-      "open.kattis.com"
       "atcoder.jp"
       "cses.fi"
       "vjudge.net"
@@ -36,17 +27,15 @@
       "spoj.com"
       "icpc.global"
 
-      # Cloudflare verification & Turnstile (required for bot check challenges on CP sites)
+      # Cloudflare verification (required for Codeforces bot check challenges)
       "cloudflare.com"
-      "challenges.cloudflare.com"
 
-      # Platform asset CDNs & web fonts
+      # Web fonts & CDN assets commonly used by CP platforms
       "fonts.googleapis.com"
       "fonts.gstatic.com"
-      "cdnjs.cloudflare.com"
 
       # Add your university contest platform or judge:
-      # "domjudge.cse.myuniversity.edu"
+      # "mycontestjudge.edu"
     ];
 
     # Local subnets accessible by contestants (LAN judges, campus network):
