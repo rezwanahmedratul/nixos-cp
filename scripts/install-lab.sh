@@ -253,7 +253,7 @@ if [ "$MODE" = "live" ]; then
 
   echo "[3/6] Updating flake with detected hardware..."
   cp /mnt/etc/nixos/hardware-configuration.nix "$HW_CONFIG_DEST"
-  (cd "$FLAKE_DIR" && git add -f "$HW_CONFIG_DEST" "$CONFIG_FILE" "$FLAKE_DIR/hosts/lab-pc/disko.nix")
+  (cd "$FLAKE_DIR" && git add -f hosts/lab-pc/hardware-configuration.nix hosts/lab-pc/configuration.nix hosts/lab-pc/disko.nix)
 
   echo "[4/6] Installing NixOS contest system closure..."
   sudo nixos-install --flake "$FLAKE_DIR#lab-pc" --no-root-password
@@ -322,7 +322,7 @@ else
 
   # Explicitly disable Disko so the generated hardware-configuration.nix manages filesystems
   sed -i 's/disko\.enableConfig = .*/disko.enableConfig = false;/' "$CONFIG_FILE"
-  (cd "$FLAKE_DIR" && git add -f "$HW_CONFIG_DEST" "$CONFIG_FILE")
+  (cd "$FLAKE_DIR" && git add -f hosts/lab-pc/hardware-configuration.nix hosts/lab-pc/configuration.nix)
 
   echo ""
   echo "[SAFETY & ACTIONS OVERVIEW]:"
@@ -365,7 +365,7 @@ else
   else
     echo "Repository is already located at /home/admin/nixos-cp."
   fi
-  (cd /home/admin/nixos-cp && git add -f "$HW_CONFIG_DEST" "$CONFIG_FILE" 2>/dev/null || true)
+  (cd /home/admin/nixos-cp && git add -f hosts/lab-pc/hardware-configuration.nix hosts/lab-pc/configuration.nix 2>/dev/null || true)
 
   echo "[2/4] Activating and registering default bootloader generation..."
   sudo nixos-rebuild switch --flake /home/admin/nixos-cp#lab-pc
