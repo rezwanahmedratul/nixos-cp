@@ -3,13 +3,17 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     disko = {
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, disko, ... }@inputs:
+  outputs = { self, nixpkgs, disko, home-manager, ... }@inputs:
   let
     system = "x86_64-linux";
   in
@@ -21,6 +25,15 @@
         specialArgs = { inherit inputs; };
         modules = [
           disko.nixosModules.disko
+          home-manager.nixosModules.home-manager
+          {
+            home-manager.useGlobalPkgs = false;
+            home-manager.useUserPackages = true;
+            home-manager.users.contestant = {
+              imports = [ ./vscode.nix ];
+              home.stateVersion = "26.05";
+            };
+          }
           ./hosts/lab-pc/configuration.nix
         ];
       };
@@ -30,6 +43,15 @@
         inherit system;
         specialArgs = { inherit inputs; };
         modules = [
+          home-manager.nixosModules.home-manager
+          {
+            home-manager.useGlobalPkgs = false;
+            home-manager.useUserPackages = true;
+            home-manager.users.nixos = {
+              imports = [ ./vscode.nix ];
+              home.stateVersion = "26.05";
+            };
+          }
           ./iso/configuration.nix
         ];
       };

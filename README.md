@@ -38,6 +38,7 @@ A declarative, reproducible NixOS configuration tailored for university competit
 .
 ├── flake.nix                          # Flake entry point (lab-pc and contest-iso outputs)
 ├── flake.lock                         # Pinned dependency lockfile
+├── vscode.nix                         # Dedicated VS Code configuration (extensions, themes, settings)
 ├── hosts/
 │   ├── common/
 │   │   ├── default.nix                # Base OS configuration shared by all lab machines
