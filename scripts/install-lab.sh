@@ -281,7 +281,21 @@ if [ "$MODE" = "live" ]; then
 # MODE 2: Already Installed NixOS System (Preserves Existing Disks)
 # ==============================================================================
 else
-  # Detect existing human user accounts (UID >= 1000 and < 30000) that are not admin and not CHOSEN_USER
+  # 1. Validate sudo upfront with current credentials so subsequent commands don't prompt
+  echo ""
+  echo "Validating administrator privileges..."
+  if ! sudo -v; then
+    echo "Error: sudo privileges are required to configure this system." >&2
+    exit 1
+  fi
+
+  # 2. Update administrator and root passwords immediately so sudo credentials stay valid
+  echo "Applying administrator password for 'admin' and 'root'..."
+  echo "admin:$ADMIN_PASS" | sudo chpasswd
+  echo "root:$ADMIN_PASS" | sudo chpasswd
+  sudo -v
+
+  # 3. Detect existing human user accounts (UID >= 1000 and < 30000) that are not admin and not CHOSEN_USER
   mapfile -t EXISTING_OTHER_USERS < <(awk -F: -v u="$CHOSEN_USER" '
     $3 >= 1000 && $3 < 30000 && $1 != "admin" && $1 != u { print $1 }
   ' /etc/passwd)
@@ -291,10 +305,30 @@ else
   echo "Mode                : In-Place Switch (Preserves existing disk configuration)"
   echo "Participant Account : $CHOSEN_USER"
   echo "----------------------------------------------------------"
+  echo "Scanning system hardware and active filesystems..."
+
+  # Generate a fresh hardware configuration from the running machine every time
+  TMP_SCAN="$(mktemp -d /tmp/nixos-hw-scan.XXXXXX)"
+  if sudo nixos-generate-config --dir "$TMP_SCAN"; then
+    sudo cp "$TMP_SCAN/hardware-configuration.nix" "$HW_CONFIG_DEST"
+    sudo chown "$(id -u):$(id -g)" "$HW_CONFIG_DEST"
+    echo "Fresh hardware configuration successfully generated."
+  else
+    echo "Error: Failed to generate hardware configuration." >&2
+    rm -rf "$TMP_SCAN"
+    exit 1
+  fi
+  rm -rf "$TMP_SCAN"
+
+  # Explicitly disable Disko so the generated hardware-configuration.nix manages filesystems
+  sed -i 's/disko\.enableConfig = .*/disko.enableConfig = false;/' "$CONFIG_FILE"
+  (cd "$FLAKE_DIR" && git add -f "$HW_CONFIG_DEST" "$CONFIG_FILE")
+
+  echo ""
   echo "[SAFETY & ACTIONS OVERVIEW]:"
-  echo "  1. Your existing disk partitions and filesystems will NOT be modified (Disko disabled)."
+  echo "  1. Your existing disk partitions and filesystems will NOT be modified."
   echo "  2. Participant account '$CHOSEN_USER' will be configured with auto-login."
-  echo "  3. Same password will be set for 'admin' (sudo) and 'root'."
+  echo "  3. Same password has been set for 'admin' (sudo) and 'root'."
   if [ ${#EXISTING_OTHER_USERS[@]} -gt 0 ]; then
     echo "  4. [USER CLEANUP]: The following existing user accounts and their /home folders WILL BE DELETED:"
     for u in "${EXISTING_OTHER_USERS[@]}"; do
@@ -307,15 +341,9 @@ else
   echo "  6. System will be switched to contest configuration."
   echo "----------------------------------------------------------"
 
-  if [ ! -f /etc/nixos/hardware-configuration.nix ]; then
-    echo "Error: /etc/nixos/hardware-configuration.nix not found." >&2
-    echo "Cannot determine the running system's disk mounts." >&2
-    exit 1
-  fi
-
-  echo "Existing mountpoints to be preserved:"
-  grep -E 'fileSystems\."[^"]+"' /etc/nixos/hardware-configuration.nix | sed 's/^[ \t]*/  - /' || true
-  if grep -q "swapDevices" /etc/nixos/hardware-configuration.nix; then
+  echo "Active mountpoints detected and preserved:"
+  grep -E 'fileSystems\."[^"]+"' "$HW_CONFIG_DEST" | sed 's/^[ \t]*/  - /' || true
+  if grep -q "swapDevices" "$HW_CONFIG_DEST"; then
     echo "  - swapDevices (preserved)"
   fi
   echo ""
@@ -327,15 +355,7 @@ else
   fi
 
   echo ""
-  echo "[1/6] Copying existing hardware & filesystem configuration..."
-  cp /etc/nixos/hardware-configuration.nix "$HW_CONFIG_DEST"
-
-  echo "[2/6] Ensuring Disko partition manager is disabled..."
-  # Explicitly disable Disko so existing partitions in hardware-configuration.nix are used as-is
-  sed -i 's/disko\.enableConfig = .*/disko.enableConfig = false;/' "$CONFIG_FILE"
-  (cd "$FLAKE_DIR" && git add -f "$HW_CONFIG_DEST" "$CONFIG_FILE")
-
-  echo "[3/6] Ensuring nixos-cp repository is available in /home/admin/nixos-cp..."
+  echo "[1/4] Ensuring nixos-cp repository is available in /home/admin/nixos-cp..."
   if [ "$FLAKE_DIR" != "/home/admin/nixos-cp" ]; then
     sudo mkdir -p /home/admin
     sudo cp -a "$FLAKE_DIR" /home/admin/nixos-cp
@@ -345,15 +365,16 @@ else
   else
     echo "Repository is already located at /home/admin/nixos-cp."
   fi
+  (cd /home/admin/nixos-cp && git add -f "$HW_CONFIG_DEST" "$CONFIG_FILE" 2>/dev/null || true)
 
-  echo "[4/6] Activating and registering default bootloader generation..."
+  echo "[2/4] Activating and registering default bootloader generation..."
   sudo nixos-rebuild switch --flake /home/admin/nixos-cp#lab-pc
 
-  echo "[5/6] Setting same password for 'admin' and 'root' (sudo)..."
+  echo "[3/4] Ensuring passwords on activated generation..."
   echo "admin:$ADMIN_PASS" | sudo chpasswd
   echo "root:$ADMIN_PASS" | sudo chpasswd
 
-  echo "[6/6] Deleting other existing user accounts and cleaning home folders..."
+  echo "[4/4] Deleting other existing user accounts and cleaning home folders..."
   if [ ${#EXISTING_OTHER_USERS[@]} -gt 0 ]; then
     for u in "${EXISTING_OTHER_USERS[@]}"; do
       echo "  Deleting user '$u'..."
