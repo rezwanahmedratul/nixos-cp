@@ -136,3 +136,4 @@ To ensure a clean environment between rounds:
 - **Change Hostname**: Override `networking.hostName` in `hosts/lab-pc/configuration.nix` or create per-machine host definitions (e.g., `hosts/pc-01/configuration.nix`).
 - **Adjust Timezone**: Update `time.timeZone = "UTC";` in `hosts/common/default.nix` to your local timezone (e.g., `"Asia/Dhaka"`, `"America/New_York"`).
 - **Add Extra Packages**: Add packages to `contest.extraPackages` in `hosts/common/default.nix`.
+

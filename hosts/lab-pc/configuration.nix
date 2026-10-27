@@ -14,3 +14,4 @@
   # NixOS Release State Version - Keep fixed to match install time
   system.stateVersion = "26.05";
 }
+

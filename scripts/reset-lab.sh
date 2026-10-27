@@ -22,3 +22,4 @@ for host in "$@"; do
 done
 
 echo ">>> All target lab computers have been reset for the next contest round."
+

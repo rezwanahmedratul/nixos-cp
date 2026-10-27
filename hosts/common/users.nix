@@ -16,3 +16,4 @@
   # Allow wheel group to sudo
   security.sudo.wheelNeedsPassword = true;
 }
+
