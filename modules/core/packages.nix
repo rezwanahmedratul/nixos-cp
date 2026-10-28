@@ -32,16 +32,6 @@
     # Java Toolchain (ICPC LTS standard)
     jdk21
 
-    # JavaScript / Node.js
-    nodejs
-
-    # Rust Toolchain
-    rustc
-    cargo
-
-    # Go Toolchain
-    go
-
     # Benchmarking, Diffing & System Verification
     time # GNU time (-v for memory & CPU profiling)
     diffutils # diff, cmp
