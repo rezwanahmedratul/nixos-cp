@@ -16,16 +16,19 @@
     # All subdomains (e.g. m1.codeforces.com, open.kattis.com, etc.) are automatically allowed.
     allowedDomains = [
       # Competitive Programming Judges & Platforms
-      "codeforces.com"
-      "codeforces.org"
-      "kattis.com"
-      "atcoder.jp"
-      "cses.fi"
-      "vjudge.net"
-      "leetcode.com"
-      "hackerrank.com"
-      "spoj.com"
+      # "codeforces.com"
+      # "codeforces.org"
+      # "kattis.com"
+      # "atcoder.jp"
+      # "cses.fi"
+      # "vjudge.net"
+      # "leetcode.com"
+      # "hackerrank.com"
+      # "spoj.com"
       "icpc.global"
+      "bapsoj.org"
+      "iubat.ac.bd"
+      "mail.google.com"
       
 
       # Cloudflare verification (required for Codeforces bot check challenges)
