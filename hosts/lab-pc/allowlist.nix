@@ -6,9 +6,7 @@
 # Note: You only need to specify the base domain (e.g. "codeforces.com").
 # ALL subdomains (e.g. "m1.codeforces.com", "m2.codeforces.com", "assets.codeforces.com")
 # are automatically and dynamically permitted by dnsmasq in real time.
-{ ... }:
-
-{
+{...}: {
   lab.networkFilter = {
     enable = true; # Set to false to disable internet restrictions
 
@@ -29,7 +27,7 @@
       "bapsoj.org"
       "iubat.ac.bd"
       "mail.google.com"
-      
+      "accounts.google.com"
 
       # Cloudflare verification (required for Codeforces bot check challenges)
       "cloudflare.com"
@@ -44,10 +42,10 @@
 
     # Local subnets accessible by contestants (LAN judges, campus network):
     allowedIPs = [
-      "127.0.0.0/8"      # Local loopback
-      "10.0.0.0/8"       # Campus network
-      "172.16.0.0/12"    # Private LAN
-      "192.168.0.0/16"   # Local contest servers (e.g. DOMjudge, PC2)
+      "127.0.0.0/8" # Local loopback
+      "10.0.0.0/8" # Campus network
+      "172.16.0.0/12" # Private LAN
+      "192.168.0.0/16" # Local contest servers (e.g. DOMjudge, PC2)
     ];
   };
 }
