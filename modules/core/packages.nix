@@ -2,7 +2,7 @@
   environment.systemPackages = with pkgs; [
     # Web Browsers
     google-chrome
-    brave
+    # brave
 
     # Terminal Emulators
     alacritty

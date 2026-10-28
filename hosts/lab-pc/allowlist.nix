@@ -29,12 +29,14 @@
       "mail.google.com"
       "accounts.google.com"
 
+
       # Cloudflare verification (required for Codeforces bot check challenges)
       "cloudflare.com"
 
       # Web fonts & CDN assets commonly used by CP platforms
       "fonts.googleapis.com"
       "fonts.gstatic.com"
+      "fonts.google.com"
 
       # Add your university contest platform or judge:
       # "mycontestjudge.edu"
