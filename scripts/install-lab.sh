@@ -292,11 +292,20 @@ else
     exit 1
   fi
 
-  # 2. Update administrator and root passwords immediately so sudo credentials stay valid
-  echo "Applying administrator password for 'admin' and 'root'..."
-  echo "admin:$ADMIN_PASS" | sudo chpasswd
-  echo "root:$ADMIN_PASS" | sudo chpasswd
-  sudo -v
+  # Keep-alive: update existing `sudo` time stamp until script has finished
+  while true; do sudo -n true; sleep 45; kill -0 "$$" || exit; done 2>/dev/null &
+  SUDO_KEEP_ALIVE_PID=$!
+  trap 'kill "$SUDO_KEEP_ALIVE_PID" 2>/dev/null || true' EXIT
+
+  # 2. Update passwords if accounts already exist on the machine
+  if id admin &>/dev/null; then
+    echo "Updating existing 'admin' password..."
+    echo "admin:$ADMIN_PASS" | sudo chpasswd || true
+  fi
+  if id root &>/dev/null; then
+    echo "Updating 'root' password..."
+    echo "root:$ADMIN_PASS" | sudo chpasswd || true
+  fi
 
   # 3. Detect existing human user accounts (UID >= 1000 and < 30000) that are not admin and not CHOSEN_USER
   mapfile -t EXISTING_OTHER_USERS < <(awk -F: -v u="$CHOSEN_USER" '
@@ -321,7 +330,7 @@ else
   echo "[SAFETY & ACTIONS OVERVIEW]:"
   echo "  1. Your existing disk partitions and filesystems will NOT be modified."
   echo "  2. Participant account '$CHOSEN_USER' will be configured with auto-login."
-  echo "  3. Same password has been set for 'admin' (sudo) and 'root'."
+  echo "  3. Same password will be set for 'admin' (sudo) and 'root'."
   if [ ${#EXISTING_OTHER_USERS[@]} -gt 0 ]; then
     echo "  4. [USER CLEANUP]: The following existing user accounts and their /home folders WILL BE DELETED:"
     for u in "${EXISTING_OTHER_USERS[@]}"; do
@@ -352,20 +361,22 @@ else
   if [ "$FLAKE_DIR" != "/home/admin/nixos-cp" ]; then
     sudo mkdir -p /home/admin
     sudo cp -a "$FLAKE_DIR" /home/admin/nixos-cp
-    sudo chown -R admin:users /home/admin/nixos-cp
-    sudo chmod 700 /home/admin
+    sudo chown -R admin:users /home/admin/nixos-cp 2>/dev/null || true
+    sudo chmod 700 /home/admin 2>/dev/null || true
     echo "Repository successfully copied to /home/admin/nixos-cp."
   else
     echo "Repository is already located at /home/admin/nixos-cp."
   fi
   (cd /home/admin/nixos-cp && git add -f hosts/lab-pc/hardware-configuration.nix hosts/lab-pc/configuration.nix 2>/dev/null || true)
-  sudo -u admin git config --global user.name "admin" 2>/dev/null || true
-  sudo -u admin git config --global user.email "admin@example.com" 2>/dev/null || true
 
   echo "[2/4] Activating and registering default bootloader generation..."
   sudo nixos-rebuild switch --flake /home/admin/nixos-cp#lab-pc
 
-  echo "[3/4] Ensuring passwords on activated generation..."
+  echo "[3/4] Ensuring admin permissions and passwords on activated generation..."
+  sudo chown -R admin:users /home/admin/nixos-cp || true
+  sudo chmod 700 /home/admin || true
+  sudo -u admin git config --global user.name "admin" 2>/dev/null || true
+  sudo -u admin git config --global user.email "admin@example.com" 2>/dev/null || true
   echo "admin:$ADMIN_PASS" | sudo chpasswd
   echo "root:$ADMIN_PASS" | sudo chpasswd
 

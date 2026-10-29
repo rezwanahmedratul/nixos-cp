@@ -27,6 +27,13 @@ let
     # Reset IDE temporary workspaces
     rm -rf "$USER_HOME/.codeblocks" "$USER_HOME/.config/Code/User/workspaceStorage" 2>/dev/null || true
 
+    # Restore pinned taskbar panel launchers
+    if [ "$(id -u)" -eq 0 ]; then
+      su - "$TARGET_USER" -c "setup-contest-panel" 2>/dev/null || true
+    else
+      setup-contest-panel 2>/dev/null || true
+    fi
+
     if [ "$(id -u)" -eq 0 ]; then
       chown -R "$TARGET_USER:users" "$USER_HOME/workspace"
     fi
