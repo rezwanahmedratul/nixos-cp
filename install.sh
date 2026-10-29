@@ -19,7 +19,7 @@ if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/flake.nix" ]; then
 elif [ "$(id -u -n 2>/dev/null || whoami)" = "admin" ]; then
   TARGET_DIR="/home/admin/nixos-cp"
 else
-  TARGET_DIR="${HOME}/nixos-cp"
+  TARGET_DIR="/tmp/nixos-cp"
 fi
 
 # Ensure essential tools are present; if not, wrap inside nix-shell

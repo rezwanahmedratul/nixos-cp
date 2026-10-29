@@ -19,6 +19,12 @@
 # ==============================================================================
 set -euo pipefail
 
+# Ensure script is running as root upfront so user removal/switch does not break permissions
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Administrator privileges are required to configure NixOS."
+  exec sudo env "PATH=$PATH" bash "$0" "$@"
+fi
+
 FLAKE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_FILE="$FLAKE_DIR/hosts/lab-pc/configuration.nix"
 HW_CONFIG_DEST="$FLAKE_DIR/hosts/lab-pc/hardware-configuration.nix"
@@ -284,30 +290,7 @@ if [ "$MODE" = "live" ]; then
 # MODE 2: Already Installed NixOS System (Preserves Existing Disks)
 # ==============================================================================
 else
-  # 1. Validate sudo upfront with current credentials so subsequent commands don't prompt
-  echo ""
-  echo "Validating administrator privileges..."
-  if ! sudo -v; then
-    echo "Error: sudo privileges are required to configure this system." >&2
-    exit 1
-  fi
-
-  # Keep-alive: update existing `sudo` time stamp until script has finished
-  while true; do sudo -n true; sleep 45; kill -0 "$$" || exit; done 2>/dev/null &
-  SUDO_KEEP_ALIVE_PID=$!
-  trap 'kill "$SUDO_KEEP_ALIVE_PID" 2>/dev/null || true' EXIT
-
-  # 2. Update passwords if accounts already exist on the machine
-  if id admin &>/dev/null; then
-    echo "Updating existing 'admin' password..."
-    echo "admin:$ADMIN_PASS" | sudo chpasswd || true
-  fi
-  if id root &>/dev/null; then
-    echo "Updating 'root' password..."
-    echo "root:$ADMIN_PASS" | sudo chpasswd || true
-  fi
-
-  # 3. Detect existing human user accounts (UID >= 1000 and < 30000) that are not admin and not CHOSEN_USER
+  # Detect existing human user accounts (UID >= 1000 and < 30000) that are not admin and not CHOSEN_USER
   mapfile -t EXISTING_OTHER_USERS < <(awk -F: -v u="$CHOSEN_USER" '
     $3 >= 1000 && $3 < 30000 && $1 != "admin" && $1 != u { print $1 }
   ' /etc/passwd)
@@ -320,7 +303,7 @@ else
   echo "Generating fresh hardware configuration from the running system..."
 
   # Generate a fresh hardware configuration from the running machine every time
-  sudo nixos-generate-config --show-hardware-config > "$HW_CONFIG_DEST"
+  nixos-generate-config --show-hardware-config > "$HW_CONFIG_DEST"
 
   # Explicitly disable Disko so the generated hardware-configuration.nix manages filesystems
   sed -i 's/disko\.enableConfig = .*/disko.enableConfig = false;/' "$CONFIG_FILE"
@@ -359,10 +342,10 @@ else
   echo ""
   echo "[1/4] Ensuring nixos-cp repository is available in /home/admin/nixos-cp..."
   if [ "$FLAKE_DIR" != "/home/admin/nixos-cp" ]; then
-    sudo mkdir -p /home/admin
-    sudo cp -a "$FLAKE_DIR" /home/admin/nixos-cp
-    sudo chown -R admin:users /home/admin/nixos-cp 2>/dev/null || true
-    sudo chmod 700 /home/admin 2>/dev/null || true
+    mkdir -p /home/admin
+    cp -a "$FLAKE_DIR" /home/admin/nixos-cp
+    chown -R admin:users /home/admin/nixos-cp 2>/dev/null || true
+    chmod 700 /home/admin 2>/dev/null || true
     echo "Repository successfully copied to /home/admin/nixos-cp."
   else
     echo "Repository is already located at /home/admin/nixos-cp."
@@ -370,23 +353,22 @@ else
   (cd /home/admin/nixos-cp && git add -f hosts/lab-pc/hardware-configuration.nix hosts/lab-pc/configuration.nix 2>/dev/null || true)
 
   echo "[2/4] Activating and registering default bootloader generation..."
-  sudo nixos-rebuild switch --flake /home/admin/nixos-cp#lab-pc
+  nixos-rebuild switch --flake /home/admin/nixos-cp#lab-pc
 
   echo "[3/4] Ensuring admin permissions and passwords on activated generation..."
-  sudo chown -R admin:users /home/admin/nixos-cp || true
-  sudo chmod 700 /home/admin || true
-  sudo -u admin git config --global user.name "admin" 2>/dev/null || true
-  sudo -u admin git config --global user.email "admin@example.com" 2>/dev/null || true
-  echo "admin:$ADMIN_PASS" | sudo chpasswd
-  echo "root:$ADMIN_PASS" | sudo chpasswd
+  chown -R admin:users /home/admin/nixos-cp || true
+  chmod 700 /home/admin || true
+  su - admin -c "git config --global user.name admin && git config --global user.email admin@example.com" 2>/dev/null || true
+  echo "admin:$ADMIN_PASS" | chpasswd
+  echo "root:$ADMIN_PASS" | chpasswd
 
   echo "[4/4] Deleting other existing user accounts and cleaning home folders..."
   if [ ${#EXISTING_OTHER_USERS[@]} -gt 0 ]; then
     for u in "${EXISTING_OTHER_USERS[@]}"; do
       echo "  Deleting user '$u'..."
-      sudo userdel -r -f "$u" 2>/dev/null || sudo userdel -f "$u" 2>/dev/null || true
+      userdel -r -f "$u" 2>/dev/null || userdel -f "$u" 2>/dev/null || true
       if [ -d "/home/$u" ]; then
-        sudo rm -rf "/home/$u"
+        rm -rf "/home/$u"
       fi
     done
   fi
@@ -396,7 +378,7 @@ else
     bname="$(basename "$hdir")"
     if [ "$bname" != "admin" ] && [ "$bname" != "$CHOSEN_USER" ]; then
       echo "  Removing orphaned directory: $hdir"
-      sudo rm -rf "$hdir"
+      rm -rf "$hdir"
     fi
   done
 
