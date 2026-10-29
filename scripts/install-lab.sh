@@ -25,6 +25,9 @@ if [ "$(id -u)" -ne 0 ]; then
   exec sudo env "PATH=$PATH" bash "$0" "$@"
 fi
 
+# Configure git to allow working across directories without dubious ownership errors
+git config --global --add safe.directory '*' 2>/dev/null || true
+
 FLAKE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_FILE="$FLAKE_DIR/hosts/lab-pc/configuration.nix"
 HW_CONFIG_DEST="$FLAKE_DIR/hosts/lab-pc/hardware-configuration.nix"
@@ -341,15 +344,21 @@ else
 
   echo ""
   echo "[1/4] Ensuring nixos-cp repository is available in /home/admin/nixos-cp..."
+  git config --global --add safe.directory '*' 2>/dev/null || true
+  git config --system --add safe.directory '*' 2>/dev/null || true
+
   if [ "$FLAKE_DIR" != "/home/admin/nixos-cp" ]; then
     mkdir -p /home/admin
     cp -a "$FLAKE_DIR" /home/admin/nixos-cp
-    chown -R admin:users /home/admin/nixos-cp 2>/dev/null || true
-    chmod 700 /home/admin 2>/dev/null || true
     echo "Repository successfully copied to /home/admin/nixos-cp."
   else
     echo "Repository is already located at /home/admin/nixos-cp."
   fi
+  # Keep ownership as root during the rebuild so git and nix evaluate cleanly without dubious ownership errors
+  chown -R root:root /home/admin/nixos-cp 2>/dev/null || true
+  chmod 755 /home/admin 2>/dev/null || true
+
+  (cd /home/admin/nixos-cp && git config --add safe.directory '*' 2>/dev/null || true)
   (cd /home/admin/nixos-cp && git add -f hosts/lab-pc/hardware-configuration.nix hosts/lab-pc/configuration.nix 2>/dev/null || true)
 
   echo "[2/4] Activating and registering default bootloader generation..."
@@ -358,6 +367,7 @@ else
   echo "[3/4] Ensuring admin permissions and passwords on activated generation..."
   chown -R admin:users /home/admin/nixos-cp || true
   chmod 700 /home/admin || true
+  su - admin -c "git config --global --add safe.directory '*'" 2>/dev/null || true
   su - admin -c "git config --global user.name admin && git config --global user.email admin@example.com" 2>/dev/null || true
   echo "admin:$ADMIN_PASS" | chpasswd
   echo "root:$ADMIN_PASS" | chpasswd

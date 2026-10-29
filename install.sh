@@ -41,6 +41,9 @@ echo "=========================================================="
 echo "    NixOS Competitive Programming Lab - Quick Setup"
 echo "=========================================================="
 
+# Ensure Git trusts target directory
+git config --global --add safe.directory '*' 2>/dev/null || true
+
 # Clone or update repository if not already running inside it
 if [ "$TARGET_DIR" != "$SCRIPT_DIR" ]; then
   if [ -d "$TARGET_DIR/.git" ]; then
